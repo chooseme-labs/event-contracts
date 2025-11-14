@@ -27,12 +27,9 @@ Core capabilities include:
 [![Architecture](./assets/architecture.png)](https://github.com/roothash-pay/event-contracts)
 
 ### 3.1.Smart Contract Architecture
-(Diagram omitted here due to documentation limitations, but described below.)
-
 The Platform system is fully modular and Pod-based, allowing horizontal scalability and Platform isolation:
 
 #### Event Creation & Management 
-
 - EventManager: Manages event lifecycle and distributes event updates.
 - EventPod: Dedicated event-processing pods that independently handle different event groups.
 

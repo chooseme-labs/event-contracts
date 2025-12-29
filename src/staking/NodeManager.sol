@@ -11,6 +11,8 @@ import "../interfaces/token/IDaoRewardManager.sol";
 import "../interfaces/staking/pancake/IPancakeV3Pool.sol";
 import "../interfaces/staking/pancake/IV3NonfungiblePositionManager.sol";
 import "../interfaces/staking/pancake/IPancakeV3SwapCallback.sol";
+import "../interfaces/staking/IEventFundingManager.sol";
+
 import "./EventFundingManager.sol";
 import "../utils/SwapHelper.sol";
 
@@ -29,12 +31,12 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
         _disableInitializers();
     }
 
-    function initialize(address initialOwner, IDaoRewardManager _daoRewardManager, address _underlyingToken, address _distributeRewardAddress, EventFundingManager _eventFundingManager) public initializer {
+    function initialize(address initialOwner, address _daoRewardManager, address _underlyingToken, address _distributeRewardAddress, address _eventFundingManager) public initializer {
         __Ownable_init(initialOwner);
-        daoRewardManager = _daoRewardManager;
+        daoRewardManager = IDaoRewardManager(_daoRewardManager);
         underlyingToken = _underlyingToken;
         distributeRewardAddress = _distributeRewardAddress;
-        eventFundingManager = _eventFundingManager;
+        eventFundingManager = IEventFundingManager(_eventFundingManager);
     }
 
     function setPool(address _pool) external onlyOwner {

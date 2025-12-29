@@ -12,15 +12,17 @@ import { NodeManager } from "../src/staking/NodeManager.sol";
 import { StakingManager } from "../src/staking/StakingManager.sol";
 import { DaoRewardManager } from "../src/token/allocation/DaoRewardManager.sol";
 import { FomoTreasureManager } from "../src/token/allocation/FomoTreasureManager.sol";
+import { EventFundingManager } from "../src/staking/EventFundingManager.sol";
 
 
-contract DepolyStakingScript is Script {
+contract DeployStakingScript is Script {
     EmptyContract public emptyContract;
     ProxyAdmin public chooseMeTokenProxyAdmin;
     ProxyAdmin public nodeManagerProxyAdmin;
     ProxyAdmin public stakingManagerProxyAdmin;
     ProxyAdmin public daoRewardManagerProxyAdmin;
     ProxyAdmin public fomoTreasureManagerProxyAdmin;
+    ProxyAdmin public eventFundingManagerProxyAdmin;
 
     ChooseMeToken public chooseMeTokenImplementation;
     ChooseMeToken public chooseMeToken;
@@ -37,10 +39,14 @@ contract DepolyStakingScript is Script {
     FomoTreasureManager public fomoTreasureManagerImplementation;
     FomoTreasureManager public fomoTreasureManager;
 
+    EventFundingManager public eventFundingManagerImplementation;
+    EventFundingManager public eventFundingManager;
+
     function run() public {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         address distributeRewardAddress =  vm.envAddress("DR_ADDRESS");
-        address chooseMeMultiSign =  vm.envAddress("MULTI_SIGNER");
+        address chooseMeMultiSign = vm.envAddress("MULTI_SIGNER");
+        address usdtTokenAddress = vm.envAddress("USDT_TOKEN_ADDRESS");
 
         address deployerAddress = vm.addr(deployerPrivateKey);
         vm.startBroadcast(deployerPrivateKey);
@@ -67,6 +73,11 @@ contract DepolyStakingScript is Script {
         daoRewardManagerImplementation = new DaoRewardManager();
         daoRewardManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(address(proxyDaoRewardManager)));
 
+        TransparentUpgradeableProxy proxyEventFundingManager = new TransparentUpgradeableProxy(address(emptyContract), chooseMeMultiSign, "");
+        eventFundingManager = EventFundingManager(payable(address(proxyEventFundingManager)));
+        eventFundingManagerImplementation = new EventFundingManager();
+        eventFundingManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(address(proxyEventFundingManager)));
+
         TransparentUpgradeableProxy proxyFomoTreasureManager = new TransparentUpgradeableProxy(address(emptyContract), chooseMeMultiSign, "");
         fomoTreasureManager = FomoTreasureManager(payable(address(proxyFomoTreasureManager)));
         fomoTreasureManagerImplementation = new FomoTreasureManager();
@@ -90,7 +101,8 @@ contract DepolyStakingScript is Script {
                 deployerAddress,
                 address(daoRewardManager),
                 address(chooseMeToken),
-                distributeRewardAddress
+                distributeRewardAddress,
+                address(eventFundingManager)
             )
         );
 
@@ -102,7 +114,8 @@ contract DepolyStakingScript is Script {
                 deployerAddress,
                 address(chooseMeToken),
                 chooseMeMultiSign,
-                address(daoRewardManager)
+                address(daoRewardManager),
+                address(eventFundingManager)
             )
         );
 
@@ -122,8 +135,17 @@ contract DepolyStakingScript is Script {
             abi.encodeWithSelector(
                 FomoTreasureManager.initialize.selector,
                 deployerAddress,
-                address(chooseMeToken),
                 address(chooseMeToken)
+            )
+        );
+
+        eventFundingManagerProxyAdmin.upgradeAndCall(
+            ITransparentUpgradeableProxy(address(eventFundingManager)),
+            address(eventFundingManagerImplementation),
+            abi.encodeWithSelector(
+                EventFundingManager.initialize.selector,
+                deployerAddress,
+                usdtTokenAddress
             )
         );
 

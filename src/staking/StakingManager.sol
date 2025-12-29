@@ -33,12 +33,12 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
 
     receive() external payable {}
 
-    function initialize(address initialOwner, address _underlyingToken, address _stakingOperatorManager, IDaoRewardManager _daoRewardManager, IEventFundingManager _eventFundingManager) public initializer  {
+    function initialize(address initialOwner, address _underlyingToken, address _stakingOperatorManager, address _daoRewardManager, address _eventFundingManager) public initializer  {
         __Ownable_init(initialOwner);
         underlyingToken = _underlyingToken;
         stakingOperatorManager = _stakingOperatorManager;
-        daoRewardManager = _daoRewardManager;
-        eventFundingManager = _eventFundingManager;
+        daoRewardManager = IDaoRewardManager(_daoRewardManager);
+        eventFundingManager = IEventFundingManager(_eventFundingManager);
     }
 
     function setPool(address _pool) external onlyOwner {

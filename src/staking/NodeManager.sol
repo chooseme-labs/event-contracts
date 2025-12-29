@@ -83,7 +83,7 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
     }
 
     function addLiquidity() external {
-        // todo: 将所有购买节点的资金用于加 LP
+        // todo: 将所有购买节点的资金用于加 LP, 将这个合约里面的一半的 USDT 买 CMO 代币，添加到流动性池里面
     }
 
     // ==============internal function================

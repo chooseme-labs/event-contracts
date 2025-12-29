@@ -8,6 +8,8 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../interfaces/token/IDaoRewardManager.sol";
+import "../interfaces/token/IChooseMeToken.sol";
+
 
 import { StakingManagerStorage } from "./StakingManagerStorage.sol";
 
@@ -171,12 +173,14 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
         });
     }
 
-    function addLiquidity() external {
-
+    function addLiquidity(uint256 amount) external {
+        // todo: amount, 将这个合约里面的一半的 USDT 买 CMO 代币，添加到流动性池里面
     }
 
-    function swapBurn() external {
+    function swapBurn(uint256 amount) external {
+        // todo: amount, 将 amount USDT 购买 CMO，销毁
 
+        IChooseMeToken(underlyingToken).burn(address(this), 0);
     }
 
     // ==============internal function================

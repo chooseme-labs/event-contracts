@@ -2,9 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "../interfaces/staking/INodeManager.sol";
-import "../interfaces/staking/pancake/IV3NonfungiblePositionManager.sol";
 import "../interfaces/token/IDaoRewardManager.sol";
-import "./EventFundingManager.sol";
 import "../interfaces/staking/IEventFundingManager.sol";
 
 

@@ -11,11 +11,14 @@ import "../interfaces/token/IDaoRewardManager.sol";
 import "../interfaces/staking/pancake/IPancakeV3Pool.sol";
 import "../interfaces/staking/pancake/IV3NonfungiblePositionManager.sol";
 import "../interfaces/staking/pancake/IPancakeV3SwapCallback.sol";
+import "./EventFundingManager.sol";
+import "../utils/SwapHelper.sol";
 
 import {NodeManagerStorage} from "./NodeManagerStorage.sol";
 
 contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, NodeManagerStorage {
     using SafeERC20 for IERC20;
+    using SwapHelper for *;
 
     modifier onlyDistributeRewardManager() {
         require(msg.sender == address(distributeRewardAddress), "onlyDistributeRewardManager");
@@ -26,11 +29,12 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
         _disableInitializers();
     }
 
-    function initialize(address initialOwner, IDaoRewardManager _daoRewardManager, address _underlyingToken, address _distributeRewardAddress) public initializer {
+    function initialize(address initialOwner, IDaoRewardManager _daoRewardManager, address _underlyingToken, address _distributeRewardAddress, EventFundingManager _eventFundingManager) public initializer {
         __Ownable_init(initialOwner);
         daoRewardManager = _daoRewardManager;
         underlyingToken = _underlyingToken;
         distributeRewardAddress = _distributeRewardAddress;
+        eventFundingManager = _eventFundingManager;
     }
 
     function setPool(address _pool) external onlyOwner {
@@ -87,7 +91,22 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
 
         uint256 toEventPredictionAmount = (rewardAmount * 20) / 100;
 
-        // todo 20% 兑换成 USDT 打入事件预测市场
+        if (toEventPredictionAmount > 0) {
+            daoRewardManager.withdraw(address(this), toEventPredictionAmount);
+
+            uint256 usdtAmount = SwapHelper.swapTokenToUsdt(
+                pool,
+                underlyingToken,
+                USDT,
+                toEventPredictionAmount,
+                address(this)
+            );
+
+            IERC20(USDT).approve(address(eventFundingManager), usdtAmount);
+
+            eventFundingManager.depositUsdt(usdtAmount);
+        }
+
         uint256 canWithdrawAmount = rewardAmount - toEventPredictionAmount;
 
         daoRewardManager.withdraw(msg.sender, canWithdrawAmount);
@@ -100,31 +119,16 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
         require(amount > 0, "Amount must be greater than 0");
         require(positionTokenId > 0, "Position token not initialized");
 
-        IPancakeV3Pool v3Pool = IPancakeV3Pool(pool);
-        (uint160 sqrtPriceX96,,,,,,) = v3Pool.slot0();
-        bool zeroForOne = USDT < underlyingToken;
-        uint160 sqrtPriceLimitX96;
-        if (zeroForOne) {
-            sqrtPriceLimitX96 = uint160((uint256(sqrtPriceX96) * 95) / 100);
-        } else {
-            sqrtPriceLimitX96 = uint160((uint256(sqrtPriceX96) * 105) / 100);
-        }
-
         uint256 swapAmount = amount / 2;
         uint256 remainingAmount = amount - swapAmount;
 
-        uint256 underlyingTokenBefore = IERC20(underlyingToken).balanceOf(address(this));
-
-        IPancakeV3Pool(pool).swap(
-            address(this),
-            zeroForOne,
-            int256(swapAmount),
-            sqrtPriceLimitX96,
-            abi.encode(pool)
+        uint256 underlyingTokenReceived = SwapHelper.swapUsdtToToken(
+            pool,
+            USDT,
+            underlyingToken,
+            swapAmount,
+            address(this)
         );
-
-        uint256 underlyingTokenAfter = IERC20(underlyingToken).balanceOf(address(this));
-        uint256 underlyingTokenReceived = underlyingTokenAfter - underlyingTokenBefore;
 
         uint256 underlyingTokenBalance = underlyingTokenReceived;
         uint256 usdtBalance = remainingAmount;
@@ -132,6 +136,7 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
         IERC20(underlyingToken).approve(POSITION_MANAGER, underlyingTokenBalance);
         IERC20(USDT).approve(POSITION_MANAGER, usdtBalance);
 
+        bool zeroForOne = USDT < underlyingToken;
         uint256 amount0Desired;
         uint256 amount1Desired;
         if (zeroForOne) {
@@ -163,17 +168,9 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
         bytes calldata data
     ) external {
         require(msg.sender == pool, "Invalid callback caller");
-        if (amount0Delta > 0) {
-            address token0 = IPancakeV3Pool(pool).token0();
-            IERC20(token0).safeTransfer(msg.sender, uint256(amount0Delta));
-        }
-        if (amount1Delta > 0) {
-            address token1 = IPancakeV3Pool(pool).token1();
-            IERC20(token1).safeTransfer(msg.sender, uint256(amount1Delta));
-        }
+        SwapHelper.handleSwapCallback(pool, amount0Delta, amount1Delta, msg.sender);
     }
 
-    // ==============internal function================
     function matchNodeTypeByAmount(uint256 amount) internal view returns (uint8)  {
         uint8 buyNodeType;
         if (amount == buyDistributedNode) {

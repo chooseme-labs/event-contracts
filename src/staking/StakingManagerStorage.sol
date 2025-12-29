@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "../interfaces/staking/IStakingManager.sol";
 import "../interfaces/token/IDaoRewardManager.sol";
+import "../interfaces/staking/IEventFundingManager.sol";
 
 abstract contract StakingManagerStorage is IStakingManager {
     uint256 public constant t1Staking = 200 * 10 ** 6;
@@ -28,6 +29,7 @@ abstract contract StakingManagerStorage is IStakingManager {
     uint256 public constant SLIPPAGE_TOLERANCE = 95;
 
     IDaoRewardManager public daoRewardManager;
+    IEventFundingManager public eventFundingManager;
 
     address public underlyingToken;
     address public stakingOperatorManager;

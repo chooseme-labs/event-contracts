@@ -4,6 +4,8 @@ pragma solidity ^0.8.20;
 import "../interfaces/staking/INodeManager.sol";
 import "../interfaces/staking/pancake/IV3NonfungiblePositionManager.sol";
 import "../interfaces/token/IDaoRewardManager.sol";
+import "./EventFundingManager.sol";
+import "../interfaces/staking/IEventFundingManager.sol";
 
 
 abstract contract NodeManagerStorage is INodeManager {
@@ -20,6 +22,7 @@ abstract contract NodeManagerStorage is INodeManager {
     uint256 public positionTokenId; // NFT position token ID
 
     IDaoRewardManager public daoRewardManager;
+    IEventFundingManager public eventFundingManager;
 
     mapping(address => NodeBuyerInfo) public nodeBuyerInfo;
 

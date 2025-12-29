@@ -65,6 +65,20 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
         });
     }
 
+    function claimReward(uint8 incomeType) external {
+        require(incomeType <= uint256(NodeIncomeType.PromoteProfit), "Invalid income type");
+        uint256 rewardAmount = nodeRewardTypeInfo[recipient][incomeType].amount;
+
+        uint256 toEventPredictionAmount = (rewardAmount * 20) / 100;
+
+        // todo 20% 兑换成 USDT 打入事件预测市场
+        uint256 canWithdrawAmount = rewardAmount - toEventPredictionAmount;
+
+        daoRewardManager.withdraw(msg.sender, canWithdrawAmount);
+
+        nodeRewardTypeInfo[recipient][incomeType].amount = 0;
+    }
+
     // ==============internal function================
     function matchNodeTypeByAmount(uint256 amount) internal view returns (uint8)  {
         uint8 buyNodeType;

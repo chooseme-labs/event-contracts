@@ -25,7 +25,7 @@ contract EventFundingManager is Initializable, OwnableUpgradeable, PausableUpgra
 
     function depositUsdt(uint256 amount) external whenNotPaused returns (bool) {
         IERC20(usdtTokenAddress).safeTransferFrom(msg.sender, address(this), amount);
-        FundingBalance[usdtTokenAddress] += amount;
+        fundingBalanceForBetting[msg.sender][usdtTokenAddress] += amount;
         emit Deposit(
             usdtTokenAddress,
             msg.sender,
@@ -34,24 +34,8 @@ contract EventFundingManager is Initializable, OwnableUpgradeable, PausableUpgra
         return true;
     }
 
-    function withdrawUsdt(address recipient, uint256 amount) external whenNotPaused returns (bool){
-        require(amount <= _tokenBalance(), "FomoTreasureManager: withdraw erc20 amount more token balance in this contracts");
-
-        FundingBalance[usdtTokenAddress] -= amount;
-
-        IERC20(usdtTokenAddress).safeTransferFrom(address(this), recipient, amount);
-
-        emit Withdraw(
-            usdtTokenAddress,
-            msg.sender,
-            recipient,
-            amount
-        );
-        return true;
-    }
-
-    // ========= internal =========
-    function _tokenBalance() internal view virtual returns (uint256) {
-        return IERC20(usdtTokenAddress).balanceOf(address(this));
+    function bettingEvent(address event_pool, uint256 amount) external {
+        require(fundingBalanceForBetting[msg.sender][usdtTokenAddress] >= 0, "amount is zero");
+        // todo betting event
     }
 }

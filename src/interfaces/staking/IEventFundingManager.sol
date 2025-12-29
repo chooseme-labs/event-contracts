@@ -15,5 +15,5 @@ interface IEventFundingManager {
         uint256 amount
     );
     function depositUsdt(uint256 amount) external returns (bool);
-    function withdrawUsdt(address recipient, uint256 amount) external returns (bool);
+    function bettingEvent(address event_pool, uint256 amount) external;
 }

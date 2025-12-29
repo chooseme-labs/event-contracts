@@ -7,7 +7,7 @@ import "../interfaces/staking/IEventFundingManager.sol";
 abstract contract EventFundingManagerStorage is IEventFundingManager {
     address public usdtTokenAddress;
 
-    mapping(address => uint256) public FundingBalance;
+    mapping(address => mapping(address => uint256)) public fundingBalanceForBetting;
 
     uint256[100] private __gap;
 }

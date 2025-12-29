@@ -95,11 +95,11 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
     }
 
     function createLiquidityProviderReward(address lpAddress, uint256 amount, uint8 incomeType) external onlyStakingOperatorManager {
-        require(lpAddress == address(0), "StakingManager.createLiquidityProviderReward: zero address");
+        require(lpAddress != address(0), "StakingManager.createLiquidityProviderReward: zero address");
         require(amount > 0, "StakingManager.createLiquidityProviderReward: amount should more than zero");
 
         if (incomeType == uint8(StakingRewardType.DailyNormalReward)) {
-            totalLpStakingReward[lpAddress].directReferralReward += amount;
+            totalLpStakingReward[lpAddress].dailyNormalReward += amount;
         } else if(incomeType == uint8(StakingRewardType.DirectReferralReward)) {
             totalLpStakingReward[lpAddress].directReferralReward += amount;
         } else if(incomeType == uint8(StakingRewardType.TeamReferralReward) && !teamOutOfReward[lpAddress]) {
@@ -131,9 +131,9 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
     }
 
     function liquidityProviderRoundStakingOver(address lpAddress, uint256 lpStakingRound) external onlyStakingOperatorManager {
-        require(lpAddress == address(0), "StakingManager.liquidityProviderRoundStakingOver: lp address is zero");
+        require(lpAddress != address(0), "StakingManager.liquidityProviderRoundStakingOver: lp address is zero");
 
-        LiquidityProviderInfo memory lpInfo = currentLiquidityProvider[lpAddress][lpStakingRound];
+        LiquidityProviderInfo storage lpInfo = currentLiquidityProvider[lpAddress][lpStakingRound];
         if (lpInfo.endTime > block.timestamp) {
             revert LpUnderStakingPeriodError(lpAddress, lpStakingRound);
         }

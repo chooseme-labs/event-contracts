@@ -79,7 +79,7 @@ contract FomoTreasureManager is Initializable, OwnableUpgradeable, PausableUpgra
         require(amount <= _tokenBalance(), "FomoTreasureManager: withdraw erc20 amount more token balance in this contracts");
         FundingBalance[underlyingToken] -= amount;
 
-        IERC20(underlyingToken).safeTransferFrom(address(this), recipient, amount);
+        IERC20(underlyingToken).safeTransfer(recipient, amount);
 
         emit Withdraw(
             underlyingToken,

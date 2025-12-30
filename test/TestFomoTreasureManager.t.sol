@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
+// forge test --match-contract FomoTreasureManagerTest -vvv
 // Mock ERC20 Token for testing
 contract MockERC20 is ERC20 {
     constructor() ERC20("Mock USDT", "USDT") {
@@ -64,7 +65,7 @@ contract FomoTreasureManagerTest is Test {
         fomoManager = FomoTreasureManager(payable(address(proxy)));
 
         // Initialize FomoTreasureManager
-        fomoManager.initialize(owner, address(rewardToken), address(mockToken));
+        fomoManager.initialize(owner, address(mockToken));
 
         // Setup user balances
         vm.deal(user1, 100 ether);
@@ -81,7 +82,6 @@ contract FomoTreasureManagerTest is Test {
     }
 
     function testInitialization() public {
-        assertEq(fomoManager.rewardTokenAddress(), address(rewardToken), "Reward token address should be set correctly");
         assertEq(fomoManager.underlyingToken(), address(mockToken), "Underlying token address should be set correctly");
         assertEq(fomoManager.owner(), owner, "Owner should be set correctly");
         assertEq(fomoManager.NativeTokenAddress(), NATIVE_TOKEN_ADDRESS, "Native token address constant should be correct");
@@ -212,13 +212,11 @@ contract FomoTreasureManagerTest is Test {
         uint256 depositAmount = 1000 * 10 ** 6;
         uint256 withdrawAmount = 300 * 10 ** 6;
 
-        // First deposit reward tokens to contract
-        rewardToken.transfer(address(fomoManager), depositAmount);
-
         vm.prank(user1);
         fomoManager.depositErc20(depositAmount);
 
-        uint256 recipientBalanceBefore = rewardToken.balanceOf(recipient);
+        uint256 recipientBalanceBefore = mockToken.balanceOf(recipient);
+        uint256 contractBalanceBefore = mockToken.balanceOf(address(fomoManager));
 
         vm.prank(user2);
         vm.expectEmit(true, false, false, true);
@@ -226,15 +224,14 @@ contract FomoTreasureManagerTest is Test {
         bool success = fomoManager.withdrawErc20(recipient, withdrawAmount);
 
         assertTrue(success, "ERC20 withdraw should return true");
-        assertEq(rewardToken.balanceOf(recipient), recipientBalanceBefore + withdrawAmount, "Recipient should receive reward tokens");
+        assertEq(mockToken.balanceOf(recipient), recipientBalanceBefore + withdrawAmount, "Recipient should receive mockToken (underlyingToken)");
+        assertEq(mockToken.balanceOf(address(fomoManager)), contractBalanceBefore - withdrawAmount, "Contract balance should decrease");
         assertEq(fomoManager.FundingBalance(address(mockToken)), depositAmount - withdrawAmount, "FundingBalance should decrease");
     }
 
     function testWithdrawErc20RevertsOnInsufficientBalance() public {
         uint256 depositAmount = 1000 * 10 ** 6;
         uint256 withdrawAmount = 1500 * 10 ** 6;
-
-        rewardToken.transfer(address(fomoManager), depositAmount);
 
         vm.prank(user1);
         fomoManager.depositErc20(depositAmount);

@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Vm.sol";
 import {Script, console} from "forge-std/Script.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
@@ -14,6 +15,14 @@ import { DaoRewardManager } from "../src/token/allocation/DaoRewardManager.sol";
 import { FomoTreasureManager } from "../src/token/allocation/FomoTreasureManager.sol";
 import { EventFundingManager } from "../src/staking/EventFundingManager.sol";
 
+contract TestUSDT is ERC20 {
+    constructor() ERC20("TestUSDT","USDT") {
+        _mint(msg.sender, 10000000 * 10 ** 18);
+    }
+}
+
+// forge script DeployStakingScript --slow --multi --rpc-url https://bsc-dataseed.binance.org --broadcast --verify --etherscan-api-key I4C1AKJT8J9KJVCXHZKK317T3XV8IVASRX
+// forge verify-contract --rpc-url https://bsc-dataseed.binance.org --etherscan-api-key I4C1AKJT8J9KJVCXHZKK317T3XV8IVASRX 0x97807b490Bb554a910f542693105d65742DaaAc9
 
 contract DeployStakingScript is Script {
     EmptyContract public emptyContract;
@@ -44,11 +53,8 @@ contract DeployStakingScript is Script {
 
     function run() public {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        address distributeRewardAddress =  vm.envAddress("DR_ADDRESS");
-        address chooseMeMultiSign = vm.envAddress("MULTI_SIGNER");
-        address usdtTokenAddress = vm.envAddress("USDT_TOKEN_ADDRESS");
+        (address deployerAddress, address distributeRewardAddress, address chooseMeMultiSign, address usdtTokenAddress) = getENVAddress(deployerPrivateKey);
 
-        address deployerAddress = vm.addr(deployerPrivateKey);
         vm.startBroadcast(deployerPrivateKey);
 
         emptyContract = new EmptyContract();
@@ -87,7 +93,7 @@ contract DeployStakingScript is Script {
             ITransparentUpgradeableProxy(address(chooseMeToken)),
             address(chooseMeTokenImplementation),
             abi.encodeWithSelector(
-                FomoTreasureManager.initialize.selector,
+                ChooseMeToken.initialize.selector,
                 deployerAddress,
                 address(daoRewardManager)
             )
@@ -101,6 +107,7 @@ contract DeployStakingScript is Script {
                 deployerAddress,
                 address(daoRewardManager),
                 address(chooseMeToken),
+                usdtTokenAddress,
                 distributeRewardAddress,
                 address(eventFundingManager)
             )
@@ -113,6 +120,7 @@ contract DeployStakingScript is Script {
                 StakingManager.initialize.selector,
                 deployerAddress,
                 address(chooseMeToken),
+                usdtTokenAddress,
                 chooseMeMultiSign,
                 address(daoRewardManager),
                 address(eventFundingManager)
@@ -125,7 +133,9 @@ contract DeployStakingScript is Script {
             abi.encodeWithSelector(
                 DaoRewardManager.initialize.selector,
                 deployerAddress,
-                address(chooseMeToken)
+                address(chooseMeToken),
+                address(nodeManager),
+                address(stakingManager)
             )
         );
 
@@ -149,11 +159,13 @@ contract DeployStakingScript is Script {
             )
         );
 
+        console.log("deploy usdtTokenAddress:", usdtTokenAddress);
         console.log("deploy proxyChooseMeToken:", address(proxyChooseMeToken));
         console.log("deploy proxyStakingManager:", address(proxyStakingManager));
         console.log("deploy proxyNodeManager:", address(proxyNodeManager));
         console.log("deploy proxyDaoRewardManager:", address(proxyDaoRewardManager));
         console.log("deploy proxyFomoTreasureManager:", address(proxyFomoTreasureManager));
+        console.log("deploy proxyEventFundingManager:", address(proxyEventFundingManager));
 
         vm.stopBroadcast();
     }
@@ -165,5 +177,22 @@ contract DeployStakingScript is Script {
 
         bytes32 adminSlot = vm.load(proxy, ERC1967Utils.ADMIN_SLOT);
         return address(uint160(uint256(adminSlot)));
+    }
+
+    function getENVAddress(uint256 deployerPrivateKey) public returns (address deployerAddress, address distributeRewardAddress, address chooseMeMultiSign, address usdtTokenAddress) {
+        uint256 mode = vm.envUint("MODE");
+        deployerAddress = vm.addr(deployerPrivateKey);
+        if(mode == 0){
+            vm.startBroadcast(deployerPrivateKey);
+            distributeRewardAddress = deployerAddress;
+            chooseMeMultiSign = deployerAddress;
+            ERC20 usdtToken = new TestUSDT();
+            usdtTokenAddress = address(usdtToken);
+            vm.stopBroadcast();
+        } else {
+            distributeRewardAddress =  vm.envAddress("DR_ADDRESS");
+            chooseMeMultiSign =  vm.envAddress("MULTI_SIGNER");
+            usdtTokenAddress =  vm.envAddress("USDT_TOKEN_ADDRESS");
+        }
     }
 }

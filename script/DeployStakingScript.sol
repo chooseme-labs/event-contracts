@@ -7,16 +7,16 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
-import { EmptyContract } from "../src/utils/EmptyContract.sol";
-import { ChooseMeToken } from "../src/token/ChooseMeToken.sol";
-import { NodeManager } from "../src/staking/NodeManager.sol";
-import { StakingManager } from "../src/staking/StakingManager.sol";
-import { DaoRewardManager } from "../src/token/allocation/DaoRewardManager.sol";
-import { FomoTreasureManager } from "../src/token/allocation/FomoTreasureManager.sol";
-import { EventFundingManager } from "../src/staking/EventFundingManager.sol";
+import {EmptyContract} from "../src/utils/EmptyContract.sol";
+import {ChooseMeToken} from "../src/token/ChooseMeToken.sol";
+import {NodeManager} from "../src/staking/NodeManager.sol";
+import {StakingManager} from "../src/staking/StakingManager.sol";
+import {DaoRewardManager} from "../src/token/allocation/DaoRewardManager.sol";
+import {FomoTreasureManager} from "../src/token/allocation/FomoTreasureManager.sol";
+import {EventFundingManager} from "../src/staking/EventFundingManager.sol";
 
 contract TestUSDT is ERC20 {
-    constructor() ERC20("TestUSDT","USDT") {
+    constructor() ERC20("TestUSDT", "USDT") {
         _mint(msg.sender, 10000000 * 10 ** 18);
     }
 }
@@ -53,38 +53,49 @@ contract DeployStakingScript is Script {
 
     function run() public {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        (address deployerAddress, address distributeRewardAddress, address chooseMeMultiSign, address usdtTokenAddress) = getENVAddress(deployerPrivateKey);
+        (
+            address deployerAddress,
+            address distributeRewardAddress,
+            address chooseMeMultiSign,
+            address usdtTokenAddress
+        ) = getENVAddress(deployerPrivateKey);
 
         vm.startBroadcast(deployerPrivateKey);
 
         emptyContract = new EmptyContract();
 
-        TransparentUpgradeableProxy proxyChooseMeToken = new TransparentUpgradeableProxy(address(emptyContract), chooseMeMultiSign, "");
+        TransparentUpgradeableProxy proxyChooseMeToken =
+            new TransparentUpgradeableProxy(address(emptyContract), chooseMeMultiSign, "");
         chooseMeToken = ChooseMeToken(address(proxyChooseMeToken));
         chooseMeTokenImplementation = new ChooseMeToken();
         chooseMeTokenProxyAdmin = ProxyAdmin(getProxyAdminAddress(address(proxyChooseMeToken)));
 
-        TransparentUpgradeableProxy proxyNodeManager = new TransparentUpgradeableProxy(address(emptyContract), chooseMeMultiSign, "");
+        TransparentUpgradeableProxy proxyNodeManager =
+            new TransparentUpgradeableProxy(address(emptyContract), chooseMeMultiSign, "");
         nodeManager = NodeManager(payable(address(proxyNodeManager)));
         nodeManagerImplementation = new NodeManager();
         nodeManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(address(proxyNodeManager)));
 
-        TransparentUpgradeableProxy proxyStakingManager = new TransparentUpgradeableProxy(address(emptyContract), chooseMeMultiSign, "");
+        TransparentUpgradeableProxy proxyStakingManager =
+            new TransparentUpgradeableProxy(address(emptyContract), chooseMeMultiSign, "");
         stakingManager = StakingManager(payable(address(proxyStakingManager)));
         stakingManagerImplementation = new StakingManager();
         stakingManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(address(proxyStakingManager)));
 
-        TransparentUpgradeableProxy proxyDaoRewardManager = new TransparentUpgradeableProxy(address(emptyContract), chooseMeMultiSign, "");
+        TransparentUpgradeableProxy proxyDaoRewardManager =
+            new TransparentUpgradeableProxy(address(emptyContract), chooseMeMultiSign, "");
         daoRewardManager = DaoRewardManager(payable(address(proxyDaoRewardManager)));
         daoRewardManagerImplementation = new DaoRewardManager();
         daoRewardManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(address(proxyDaoRewardManager)));
 
-        TransparentUpgradeableProxy proxyEventFundingManager = new TransparentUpgradeableProxy(address(emptyContract), chooseMeMultiSign, "");
+        TransparentUpgradeableProxy proxyEventFundingManager =
+            new TransparentUpgradeableProxy(address(emptyContract), chooseMeMultiSign, "");
         eventFundingManager = EventFundingManager(payable(address(proxyEventFundingManager)));
         eventFundingManagerImplementation = new EventFundingManager();
         eventFundingManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(address(proxyEventFundingManager)));
 
-        TransparentUpgradeableProxy proxyFomoTreasureManager = new TransparentUpgradeableProxy(address(emptyContract), chooseMeMultiSign, "");
+        TransparentUpgradeableProxy proxyFomoTreasureManager =
+            new TransparentUpgradeableProxy(address(emptyContract), chooseMeMultiSign, "");
         fomoTreasureManager = FomoTreasureManager(payable(address(proxyFomoTreasureManager)));
         fomoTreasureManagerImplementation = new FomoTreasureManager();
         fomoTreasureManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(address(proxyFomoTreasureManager)));
@@ -92,11 +103,7 @@ contract DeployStakingScript is Script {
         chooseMeTokenProxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(address(chooseMeToken)),
             address(chooseMeTokenImplementation),
-            abi.encodeWithSelector(
-                ChooseMeToken.initialize.selector,
-                deployerAddress,
-                address(daoRewardManager)
-            )
+            abi.encodeWithSelector(ChooseMeToken.initialize.selector, deployerAddress, address(daoRewardManager))
         );
 
         nodeManagerProxyAdmin.upgradeAndCall(
@@ -142,21 +149,13 @@ contract DeployStakingScript is Script {
         fomoTreasureManagerProxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(address(fomoTreasureManager)),
             address(fomoTreasureManagerImplementation),
-            abi.encodeWithSelector(
-                FomoTreasureManager.initialize.selector,
-                deployerAddress,
-                address(chooseMeToken)
-            )
+            abi.encodeWithSelector(FomoTreasureManager.initialize.selector, deployerAddress, address(chooseMeToken))
         );
 
         eventFundingManagerProxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(address(eventFundingManager)),
             address(eventFundingManagerImplementation),
-            abi.encodeWithSelector(
-                EventFundingManager.initialize.selector,
-                deployerAddress,
-                usdtTokenAddress
-            )
+            abi.encodeWithSelector(EventFundingManager.initialize.selector, deployerAddress, usdtTokenAddress)
         );
 
         console.log("deploy usdtTokenAddress:", usdtTokenAddress);
@@ -168,8 +167,17 @@ contract DeployStakingScript is Script {
         console.log("deploy proxyEventFundingManager:", address(proxyEventFundingManager));
 
         vm.stopBroadcast();
-    }
 
+        string memory obj = "{}";
+        vm.serializeAddress(obj, "usdtTokenAddress", usdtTokenAddress);
+        vm.serializeAddress(obj, "proxyChooseMeToken", proxyChooseMeToken);
+        vm.serializeAddress(obj, "proxyStakingManager", proxyStakingManager);
+        vm.serializeAddress(obj, "proxyNodeManager", proxyNodeManager);
+        vm.serializeAddress(obj, "proxyDaoRewardManager", proxyDaoRewardManager);
+        vm.serializeAddress(obj, "proxyFomoTreasureManager", proxyFomoTreasureManager);
+        string memory finalJSON = vm.serializeAddress(obj, "proxyEventFundingManager", proxyEventFundingManager);
+        vm.writeJson(finalJSON, "./cache/__deployed_addresses.json");
+    }
 
     function getProxyAdminAddress(address proxy) internal view returns (address) {
         address CHEATCODE_ADDRESS = 0x7109709ECfa91a80626fF3989D68f67F5b1DD12D;
@@ -179,10 +187,18 @@ contract DeployStakingScript is Script {
         return address(uint160(uint256(adminSlot)));
     }
 
-    function getENVAddress(uint256 deployerPrivateKey) public returns (address deployerAddress, address distributeRewardAddress, address chooseMeMultiSign, address usdtTokenAddress) {
+    function getENVAddress(uint256 deployerPrivateKey)
+        public
+        returns (
+            address deployerAddress,
+            address distributeRewardAddress,
+            address chooseMeMultiSign,
+            address usdtTokenAddress
+        )
+    {
         uint256 mode = vm.envUint("MODE");
         deployerAddress = vm.addr(deployerPrivateKey);
-        if(mode == 0){
+        if (mode == 0) {
             vm.startBroadcast(deployerPrivateKey);
             distributeRewardAddress = deployerAddress;
             chooseMeMultiSign = deployerAddress;
@@ -190,9 +206,9 @@ contract DeployStakingScript is Script {
             usdtTokenAddress = address(usdtToken);
             vm.stopBroadcast();
         } else {
-            distributeRewardAddress =  vm.envAddress("DR_ADDRESS");
-            chooseMeMultiSign =  vm.envAddress("MULTI_SIGNER");
-            usdtTokenAddress =  vm.envAddress("USDT_TOKEN_ADDRESS");
+            distributeRewardAddress = vm.envAddress("DR_ADDRESS");
+            chooseMeMultiSign = vm.envAddress("MULTI_SIGNER");
+            usdtTokenAddress = vm.envAddress("USDT_TOKEN_ADDRESS");
         }
     }
 }

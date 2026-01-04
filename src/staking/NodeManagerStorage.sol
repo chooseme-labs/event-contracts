@@ -7,8 +7,8 @@ import "../interfaces/staking/IEventFundingManager.sol";
 
 
 abstract contract NodeManagerStorage is INodeManager {
-    uint256 public constant buyDistributedNode = 500 * 10 ** 6;
-    uint256 public constant buyClusterNode = 1000 * 10 ** 6;
+    uint256 public constant buyDistributedNode = 500 * 10 ** 18;
+    uint256 public constant buyClusterNode = 1000 * 10 ** 18;
 
     address public constant POSITION_MANAGER = 0x46A15B0b27311cedF172AB29E4f4766fbE7F4364;
     uint256 public constant SLIPPAGE_TOLERANCE = 95;

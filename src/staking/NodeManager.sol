@@ -27,7 +27,7 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
         _;
     }
 
-    constructor(){
+    constructor() {
         _disableInitializers();
     }
 
@@ -40,7 +40,14 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
      * @param _distributeRewardAddress 奖励分发管理地址
      * @param _eventFundingManager 事件资金管理合约地址
      */
-    function initialize(address initialOwner, address _daoRewardManager, address _underlyingToken,address _usdt, address _distributeRewardAddress, address _eventFundingManager) public initializer {
+    function initialize(
+        address initialOwner,
+        address _daoRewardManager,
+        address _underlyingToken,
+        address _usdt,
+        address _distributeRewardAddress,
+        address _eventFundingManager
+    ) public initializer {
         __Ownable_init(initialOwner);
         daoRewardManager = IDaoRewardManager(_daoRewardManager);
         underlyingToken = _underlyingToken;
@@ -80,19 +87,11 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
 
         IERC20(USDT).safeTransferFrom(msg.sender, address(this), amount);
 
-        NodeBuyerInfo memory buyerInfo = NodeBuyerInfo({
-            buyer: msg.sender,
-            nodeType: buyNodeType,
-            amount: amount
-        });
+        NodeBuyerInfo memory buyerInfo = NodeBuyerInfo({buyer: msg.sender, nodeType: buyNodeType, amount: amount});
 
         nodeBuyerInfo[msg.sender] = buyerInfo;
 
-        emit PurchaseNodes({
-            buyer: msg.sender,
-            amount: amount,
-            nodeType: buyNodeType
-        });
+        emit PurchaseNodes({buyer: msg.sender, amount: amount, nodeType: buyNodeType});
     }
 
     /**
@@ -101,18 +100,17 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
      * @param amount 奖励金额
      * @param incomeType 收益类型（0-节点收益, 1-推广收益）
      */
-    function distributeRewards(address recipient, uint256 amount, uint8 incomeType) external onlyDistributeRewardManager {
+    function distributeRewards(address recipient, uint256 amount, uint8 incomeType)
+        external
+        onlyDistributeRewardManager
+    {
         require(recipient != address(0), "NodeManager.distributeRewards: zero address");
         require(amount > 0, "NodeManager.distributeRewards: amount must more than zero");
         require(incomeType <= uint256(NodeIncomeType.PromoteProfit), "Invalid income type");
 
         nodeRewardTypeInfo[recipient][incomeType].amount += amount;
 
-        emit DistributeNodeRewards({
-            recipient: recipient,
-            amount: amount,
-            incomeType: incomeType
-        });
+        emit DistributeNodeRewards({recipient: recipient, amount: amount, incomeType: incomeType});
     }
 
     /**
@@ -130,13 +128,8 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
         if (toEventPredictionAmount > 0) {
             daoRewardManager.withdraw(address(this), toEventPredictionAmount);
 
-            uint256 usdtAmount = SwapHelper.swapTokenToUsdt(
-                pool,
-                underlyingToken,
-                USDT,
-                toEventPredictionAmount,
-                address(this)
-            );
+            uint256 usdtAmount =
+                SwapHelper.swapTokenToUsdt(pool, underlyingToken, USDT, toEventPredictionAmount, address(this));
 
             IERC20(USDT).approve(address(eventFundingManager), usdtAmount);
             eventFundingManager.depositUsdt(usdtAmount);
@@ -160,13 +153,8 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
         uint256 remainingAmount = amount - swapAmount;
         IERC20(USDT).approve(POSITION_MANAGER, amount);
 
-        uint256 underlyingTokenReceived = SwapHelper.swapUsdtToToken(
-            pool,
-            USDT,
-            underlyingToken,
-            swapAmount,
-            address(this)
-        );
+        uint256 underlyingTokenReceived =
+            SwapHelper.swapUsdtToToken(pool, USDT, underlyingToken, swapAmount, address(this));
 
         uint256 underlyingTokenBalance = underlyingTokenReceived;
         uint256 usdtBalance = remainingAmount;
@@ -204,11 +192,7 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
      * @param amount1Delta token1 的变化量
      * @param data 回调数据
      */
-    function pancakeV3SwapCallback(
-        int256 amount0Delta,
-        int256 amount1Delta,
-        bytes calldata data
-    ) external {
+    function pancakeV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata data) external {
         require(msg.sender == pool, "Invalid callback caller");
         SwapHelper.handleSwapCallback(pool, amount0Delta, amount1Delta, msg.sender);
     }
@@ -218,7 +202,7 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
      * @param amount 购买金额
      * @return 节点类型（0-分布式节点, 1-集群节点）
      */
-    function matchNodeTypeByAmount(uint256 amount) internal view returns (uint8)  {
+    function matchNodeTypeByAmount(uint256 amount) internal view returns (uint8) {
         uint8 buyNodeType;
         if (amount == buyDistributedNode) {
             buyNodeType = uint8(NodeType.DistributedNode);

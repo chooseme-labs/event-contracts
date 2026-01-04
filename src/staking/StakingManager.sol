@@ -15,13 +15,13 @@ import "../interfaces/staking/pancake/IPancakeV3SwapCallback.sol";
 import "../interfaces/staking/IEventFundingManager.sol";
 import "../utils/SwapHelper.sol";
 
-import { StakingManagerStorage } from "./StakingManagerStorage.sol";
+import {StakingManagerStorage} from "./StakingManagerStorage.sol";
 
 contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeable, StakingManagerStorage {
     using SafeERC20 for IERC20;
     using SwapHelper for *;
 
-    constructor(){
+    constructor() {
         _disableInitializers();
     }
 
@@ -43,7 +43,14 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
      * @param _daoRewardManager DAO 奖励管理合约地址
      * @param _eventFundingManager 事件资金管理合约地址
      */
-    function initialize(address initialOwner, address _underlyingToken,address _usdt, address _stakingOperatorManager, address _daoRewardManager, address _eventFundingManager) public initializer  {
+    function initialize(
+        address initialOwner,
+        address _underlyingToken,
+        address _usdt,
+        address _stakingOperatorManager,
+        address _daoRewardManager,
+        address _eventFundingManager
+    ) public initializer {
         __Ownable_init(initialOwner);
         underlyingToken = _underlyingToken;
         USDT = _usdt;
@@ -71,18 +78,14 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
     }
 
     /**
-     * @dev 流动性提供者质押存款
+     * @dev 流动性提供者质押存款-用户端
      * @param myInviter 邀请人地址
      * @param amount 质押金额，必须匹配 T1-T6 中的一种质押类型
      */
     function liquidityProviderDeposit(address myInviter, uint256 amount) external {
         if (
-            amount != t1Staking &&
-            amount != t2Staking &&
-            amount != t3Staking &&
-            amount != t4Staking &&
-            amount != t5Staking &&
-            amount != t6Staking
+            amount != t1Staking && amount != t2Staking && amount != t3Staking && amount != t4Staking
+                && amount != t5Staking && amount != t6Staking
         ) {
             revert InvalidAmountError(amount);
         }
@@ -101,9 +104,9 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
             liquidityProvider: msg.sender,
             stakingType: stakingType,
             amount: amount,
-            startTime: block.timestamp ,
+            startTime: block.timestamp,
             endTime: endStakingTimeDuration,
-            stakingStatus: 0    // 0: staking; 1: endStaking
+            stakingStatus: 0 // 0: staking; 1: endStaking
         });
 
         currentLiquidityProvider[msg.sender][lpStakingRound[msg.sender]] = lpInfo;
@@ -124,13 +127,7 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
 
         lpStakingRound[msg.sender] += 1;
 
-        emit LiquidityProviderDeposits(
-            underlyingToken,
-            msg.sender,
-            amount,
-            block.timestamp,
-            endStakingTime
-        );
+        emit LiquidityProviderDeposits(underlyingToken, msg.sender, amount, block.timestamp, endStakingTime);
     }
 
     /**
@@ -148,19 +145,22 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
      * @param amount 奖励金额
      * @param incomeType 收益类型（0-日常普通奖励, 1-直推奖励, 2-团队奖励, 3-FOMO池奖励）
      */
-    function createLiquidityProviderReward(address lpAddress, uint256 amount, uint8 incomeType) external onlyStakingOperatorManager {
+    function createLiquidityProviderReward(address lpAddress, uint256 amount, uint8 incomeType)
+        external
+        onlyStakingOperatorManager
+    {
         require(lpAddress != address(0), "StakingManager.createLiquidityProviderReward: zero address");
         require(amount > 0, "StakingManager.createLiquidityProviderReward: amount should more than zero");
 
         if (incomeType == uint8(StakingRewardType.DailyNormalReward)) {
             totalLpStakingReward[lpAddress].dailyNormalReward += amount;
-        } else if(incomeType == uint8(StakingRewardType.DirectReferralReward)) {
+        } else if (incomeType == uint8(StakingRewardType.DirectReferralReward)) {
             totalLpStakingReward[lpAddress].directReferralReward += amount;
-        } else if(incomeType == uint8(StakingRewardType.TeamReferralReward) && !teamOutOfReward[lpAddress]) {
-            uint256 teamRewardAmount = totalLpStakingReward[lpAddress].teamReferralReward;  // CMT
-            uint256 totalStakingAmount = totalLpStakingReward[lpAddress].totalStaking;      // USDT
+        } else if (incomeType == uint8(StakingRewardType.TeamReferralReward) && !teamOutOfReward[lpAddress]) {
+            uint256 teamRewardAmount = totalLpStakingReward[lpAddress].teamReferralReward; // CMT
+            uint256 totalStakingAmount = totalLpStakingReward[lpAddress].totalStaking; // USDT
 
-            uint256 stakingToCmt = totalStakingAmount;  // todo: 读取 Oracle 的价格，将 CMT 转换成 USDT
+            uint256 stakingToCmt = totalStakingAmount; // todo: 读取 Oracle 的价格，将 CMT 转换成 USDT
 
             if ((teamRewardAmount + amount) < stakingToCmt * 3) {
                 totalLpStakingReward[lpAddress].teamReferralReward += amount;
@@ -169,7 +169,7 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
                 totalLpStakingReward[lpAddress].teamReferralReward += lastTeamReward;
                 outOfAchieveReturnsNode(lpAddress, totalLpStakingReward[lpAddress].teamReferralReward);
             }
-        } else if(incomeType == uint8(StakingRewardType.FomoPoolReward)) {
+        } else if (incomeType == uint8(StakingRewardType.FomoPoolReward)) {
             totalLpStakingReward[lpAddress].fomoPoolReward += amount;
         } else {
             revert InvalidRewardTypeError(incomeType);
@@ -177,10 +177,7 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
         totalLpStakingReward[lpAddress].totalReward += amount;
 
         emit LiquidityProviderRewards({
-            liquidityProvider: lpAddress,
-            amount: amount,
-            rewardBlock: block.number,
-            incomeType: incomeType
+            liquidityProvider: lpAddress, amount: amount, rewardBlock: block.number, incomeType: incomeType
         });
     }
 
@@ -189,7 +186,10 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
      * @param lpAddress 流动性提供者地址
      * @param lpStakingRound 质押轮次
      */
-    function liquidityProviderRoundStakingOver(address lpAddress, uint256 lpStakingRound) external onlyStakingOperatorManager {
+    function liquidityProviderRoundStakingOver(address lpAddress, uint256 lpStakingRound)
+        external
+        onlyStakingOperatorManager
+    {
         require(lpAddress != address(0), "StakingManager.liquidityProviderRoundStakingOver: lp address is zero");
 
         LiquidityProviderInfo storage lpInfo = currentLiquidityProvider[lpAddress][lpStakingRound];
@@ -199,15 +199,11 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
 
         lpInfo.stakingStatus = 1;
 
-        emit lpRoundStakingOver({
-            liquidityProvider: lpAddress,
-            endBlock: block.number,
-            endTime: block.timestamp
-        });
+        emit lpRoundStakingOver({liquidityProvider: lpAddress, endBlock: block.number, endTime: block.timestamp});
     }
 
     /**
-     * @dev 流动性提供者领取奖励
+     * @dev 流动性提供者领取奖励-用户端
      * @param amount 要领取的奖励金额
      * @notice 20% 的奖励将被强制扣留并转换为 USDT 存入事件预测市场
      */
@@ -225,13 +221,8 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
         if (toEventPredictionAmount > 0) {
             daoRewardManager.withdraw(address(this), toEventPredictionAmount);
 
-            uint256 usdtAmount = SwapHelper.swapTokenToUsdt(
-                pool,
-                underlyingToken,
-                USDT,
-                toEventPredictionAmount,
-                address(this)
-            );
+            uint256 usdtAmount =
+                SwapHelper.swapTokenToUsdt(pool, underlyingToken, USDT, toEventPredictionAmount, address(this));
 
             IERC20(USDT).approve(address(eventFundingManager), usdtAmount);
             eventFundingManager.depositUsdt(usdtAmount);
@@ -262,13 +253,8 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
         uint256 remainingAmount = amount - swapAmount;
 
         IERC20(USDT).approve(POSITION_MANAGER, amount);
-        uint256 underlyingTokenReceived = SwapHelper.swapUsdtToToken(
-            pool,
-            USDT,
-            underlyingToken,
-            swapAmount,
-            address(this)
-        );
+        uint256 underlyingTokenReceived =
+            SwapHelper.swapUsdtToToken(pool, USDT, underlyingToken, swapAmount, address(this));
 
         uint256 underlyingTokenBalance = underlyingTokenReceived;
         uint256 usdtBalance = remainingAmount;
@@ -287,7 +273,7 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
         }
 
         IV3NonfungiblePositionManager.IncreaseLiquidityParams memory params =
-                            IV3NonfungiblePositionManager.IncreaseLiquidityParams({
+            IV3NonfungiblePositionManager.IncreaseLiquidityParams({
                 tokenId: positionTokenId,
                 amount0Desired: amount0Desired,
                 amount1Desired: amount1Desired,
@@ -295,7 +281,8 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
                 amount1Min: (amount1Desired * SLIPPAGE_TOLERANCE) / 100,
                 deadline: block.timestamp + 15 minutes
             });
-        (uint128 liquidityAdded, uint256 amount0Used, uint256 amount1Used) = IV3NonfungiblePositionManager(POSITION_MANAGER).increaseLiquidity(params);
+        (uint128 liquidityAdded, uint256 amount0Used, uint256 amount1Used) =
+            IV3NonfungiblePositionManager(POSITION_MANAGER).increaseLiquidity(params);
 
         emit LiquidityAdded(positionTokenId, liquidityAdded, amount0Used, amount1Used);
     }
@@ -306,11 +293,7 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
      * @param amount1Delta token1 的变化量
      * @param data 回调数据
      */
-    function pancakeV3SwapCallback(
-        int256 amount0Delta,
-        int256 amount1Delta,
-        bytes calldata data
-    ) external {
+    function pancakeV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata data) external {
         require(msg.sender == pool, "Invalid callback caller");
         SwapHelper.handleSwapCallback(pool, amount0Delta, amount1Delta, msg.sender);
     }
@@ -321,13 +304,7 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
      */
     function swapBurn(uint256 amount) external onlyStakingOperatorManager {
         IERC20(USDT).approve(POSITION_MANAGER, amount);
-        uint256 underlyingTokenReceived = SwapHelper.swapUsdtToToken(
-            pool,
-            USDT,
-            underlyingToken,
-            amount,
-            address(this)
-        );
+        uint256 underlyingTokenReceived = SwapHelper.swapUsdtToToken(pool, USDT, underlyingToken, amount, address(this));
 
         require(underlyingTokenReceived > 0, "No tokens received from swap");
         IChooseMeToken(underlyingToken).burn(address(this), underlyingTokenReceived);
@@ -342,10 +319,10 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
      * @return stakingType 质押类型
      * @return stakingTimeInternal 锁定时间（秒）
      */
-    function liquidityProviderTypeAndAmount(uint256 amount) internal view returns (uint8, uint256)  {
+    function liquidityProviderTypeAndAmount(uint256 amount) internal view returns (uint8, uint256) {
         uint8 stakingType;
         uint256 stakingTimeInternal;
-        if (amount == t1Staking)  {
+        if (amount == t1Staking) {
             stakingType = uint8(StakingType.T1);
             stakingTimeInternal = t1StakingTimeInternal;
         } else if (amount == t2Staking) {
@@ -354,7 +331,7 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
         } else if (amount == t3Staking) {
             stakingType = uint8(StakingType.T3);
             stakingTimeInternal = t3StakingTimeInternal;
-        }  else if (amount == t4Staking) {
+        } else if (amount == t4Staking) {
             stakingType = uint8(StakingType.T4);
             stakingTimeInternal = t4StakingTimeInternal;
         } else if (amount == t5Staking) {
@@ -363,7 +340,7 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
         } else if (amount == t6Staking) {
             stakingType = uint8(StakingType.T6);
             stakingTimeInternal = t6StakingTimeInternal;
-        } else  {
+        } else {
             revert InvalidAmountError(amount);
         }
 
@@ -379,9 +356,7 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
         teamOutOfReward[lpAddress] = true;
 
         emit outOfAchieveReturnsNodeExit({
-            liquidityProvider: lpAddress,
-            teamReward: teamRewardAmount,
-            blockNumber: block.number
+            liquidityProvider: lpAddress, teamReward: teamRewardAmount, blockNumber: block.number
         });
     }
 }

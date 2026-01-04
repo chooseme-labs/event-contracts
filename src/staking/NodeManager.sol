@@ -75,7 +75,7 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
     }
 
     /**
-     * @dev 购买节点
+     * @dev 购买节点-用户端
      * @param amount 购买节点所需的代币数量，必须匹配分布式节点或集群节点的价格
      */
     function purchaseNode(uint256 amount) external {
@@ -114,7 +114,7 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
     }
 
     /**
-     * @dev 领取节点奖励
+     * @dev 领取节点奖励-用户端
      * @param incomeType 收益类型（0-节点收益, 1-推广收益）
      * @notice 20% 的奖励将被强制扣留并转换为 USDT 存入事件预测市场
      */

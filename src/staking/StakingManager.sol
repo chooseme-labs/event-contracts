@@ -96,7 +96,7 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
         require(amount >= userCurrentLiquidityProvider[msg.sender], "StakingManager.liquidityProviderDeposit: amount should more than previous staking amount");
         userCurrentLiquidityProvider[msg.sender] = amount;
 
-        IERC20(underlyingToken).safeTransferFrom(msg.sender, address(this), amount);
+        IERC20(USDT).safeTransferFrom(msg.sender, address(this), amount);
 
         (uint8 stakingType, uint256 endStakingTime) = liquidityProviderTypeAndAmount(amount);
 
@@ -131,7 +131,7 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
 
         lpStakingRound[msg.sender] += 1;
 
-        emit LiquidityProviderDeposits(underlyingToken, msg.sender, amount, block.timestamp, endStakingTime);
+        emit LiquidityProviderDeposits(USDT, msg.sender, amount, block.timestamp, endStakingTime);
     }
 
     /**
@@ -323,7 +323,7 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
      * @return stakingType Staking type
      * @return stakingTimeInternal Lock time (seconds)
      */
-    function liquidityProviderTypeAndAmount(uint256 amount) internal view returns (uint8, uint256) {
+    function liquidityProviderTypeAndAmount(uint256 amount) internal pure returns (uint8, uint256) {
         uint8 stakingType;
         uint256 stakingTimeInternal;
         if (amount == t1Staking) {

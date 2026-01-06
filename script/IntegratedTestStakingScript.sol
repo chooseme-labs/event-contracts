@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 
 import {EmptyContract} from "../src/utils/EmptyContract.sol";
 import {ChooseMeToken} from "../src/token/ChooseMeToken.sol";
@@ -141,9 +142,97 @@ contract IntegratedTestStakingScript is Script {
         poolAddress = nodeManager.pool();
 
         // initCMT(deployerPrivateKey);
+        // transfer(deployerPrivateKey);
+
         // testAddLiquidity(deployerPrivateKey);
+        // readTokenIdAndPool();
+
         // testNodeAddLiquidity(deployerPrivateKey);
-        testSwap(deployerPrivateKey);
+        // testSwap(deployerPrivateKey);
+        // testSwapBurn(deployerPrivateKey);
+    }
+
+    /// forge script IntegratedTestStakingScript --sig "readTokenIdAndPool()" --rpc-url https://bsc-dataseed.binance.org
+    /// @notice 读取指定地址拥有的所有 NFT Position Token ID 及其池子信息
+    /// @dev 使用 ERC721Enumerable 接口枚举所有 position NFT
+    function readTokenIdAndPool() public {
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        address deployerAddress = vm.addr(deployerPrivateKey);
+
+        IERC721 positionNFT = IERC721(address(positionManager));
+
+        console.log("\n=== Reading NFT Position Token IDs ===");
+        console.log("Address:", deployerAddress);
+
+        // 获取该地址拥有的 NFT 数量
+        uint256 balance = positionNFT.balanceOf(deployerAddress);
+        console.log("Total NFT Positions:", balance);
+
+        if (balance == 0) {
+            console.log("No positions found for this address");
+            return;
+        }
+
+        // 遍历所有 NFT 并读取详细信息
+        for (uint256 i = 0; i < balance; i++) {
+            // 使用 ERC721Enumerable 的 tokenOfOwnerByIndex 方法
+            uint256 _tokenId = IERC721Enumerable(address(positionManager)).tokenOfOwnerByIndex(deployerAddress, i);
+
+            console.log("\n--- Position #", i + 1, "---");
+            console.log("Token ID:", _tokenId);
+
+            // 读取 position 的详细信息
+            (
+                ,,
+                address token0,
+                address token1,
+                uint24 fee,
+                int24 tickLower,
+                int24 tickUpper,
+                uint128 liquidity,,,
+                uint128 tokensOwed0,
+                uint128 tokensOwed1
+            ) = positionManager.positions(_tokenId);
+
+            console.log("  Token0:", token0);
+            console.log("  Token1:", token1);
+            console.log("  Fee Tier:", fee);
+            console.log("  Tick Lower:", uint256(uint24(tickLower)));
+            console.log("  Tick Upper:", uint256(uint24(tickUpper)));
+            console.log("  Liquidity:", liquidity);
+            console.log("  Tokens Owed0:", tokensOwed0);
+            console.log("  Tokens Owed1:", tokensOwed1);
+
+            // 获取对应的池子地址
+            address pool = factory.getPool(token0, token1, fee);
+            console.log("  Pool Address:", pool);
+
+            // 如果池子存在，读取池子的当前状态
+            if (pool != address(0)) {
+                IPancakeV3Pool poolContract = IPancakeV3Pool(pool);
+                (uint160 sqrtPriceX96, int24 tick,,,,,) = poolContract.slot0();
+                console.log("  Current Tick:", uint256(uint24(tick)));
+                console.log("  Current SqrtPriceX96:", sqrtPriceX96);
+
+                // 检查当前价格是否在 position 范围内
+                if (tick >= tickLower && tick <= tickUpper) {
+                    console.log("  Status: IN RANGE (earning fees)");
+                } else {
+                    console.log("  Status: OUT OF RANGE (not earning fees)");
+                }
+            }
+
+            if (pool == nodeManager.pool()) {
+                vm.startBroadcast(deployerPrivateKey);
+                nodeManager.setPositionTokenId(_tokenId);
+                stakingManager.setPositionTokenId(_tokenId);
+                console.log("setPositionTokenId ===========>", _tokenId);
+                vm.stopBroadcast();
+            }
+        }
+
+        console.log("\n=== Summary ===");
+        console.log("Total positions found:", balance);
     }
 
     function getAddresses()
@@ -386,8 +475,8 @@ contract IntegratedTestStakingScript is Script {
         address poolAddress = factory.getPool(token0, token1, poolFee);
         console.log("Pool Address:", poolAddress);
 
-        console.log("======================>", Math.sqrt((10 ** 7) * (2 ** 192)) / 1e9);
-        console.log("======================>", Math.sqrt(((10 ** 18) * (2 ** 192)) / (10 ** 7)));
+        console.log("=========", Math.sqrt((10 ** 7) * (2 ** 192)) / 1e9);
+        console.log("=========", Math.sqrt(((10 ** 18) * (2 ** 192)) / (10 ** 7)));
 
         if (poolAddress == address(0)) {
             console.log("Pool does not exist, creating and initializing...");
@@ -431,12 +520,12 @@ contract IntegratedTestStakingScript is Script {
 
         (uint256 _tokenId, uint128 liquidity, uint256 amount0, uint256 amount1) = positionManager.mint(params);
 
-        console.log("Position NFT Token ID:", _tokenId);
+        console.log("Position NFT Token ID: ===============>", _tokenId);
         console.log("Liquidity Added:", liquidity);
-        console.log("amount0Desired: =============>", amount0Desired);
-        console.log("amount1Desired: =============>", amount1Desired);
-        console.log("Amount0 Used: =============>", amount0);
-        console.log("Amount1 Used: =============>", amount1);
+        console.log("amount0Desired: ", amount0Desired);
+        console.log("amount1Desired: ", amount1Desired);
+        console.log("Amount0 Used: ", amount0);
+        console.log("Amount1 Used: ", amount1);
 
         // 计算实际使用率
         uint256 usage0Percent = (amount0 * 100) / amount0Desired;
@@ -466,7 +555,10 @@ contract IntegratedTestStakingScript is Script {
         // tokenId 和 poolAddress 存储到合约状态，供 NodeManager 使用
         // 但是这里获取的 tokenId 可能存在问题
         nodeManager.setPool(poolAddress);
-        nodeManager.setPositionTokenId(tokenId);
+        // nodeManager.setPositionTokenId(_tokenId);
+
+        stakingManager.setPool(poolAddress);
+        // stakingManager.setPositionTokenId(_tokenId);
 
         vm.stopBroadcast();
     }
@@ -852,8 +944,118 @@ contract IntegratedTestStakingScript is Script {
 
     function transfer(uint256 deployerPrivateKey) internal {
         vm.startBroadcast(deployerPrivateKey);
-        // usdt.transfer(0xcCA370146cabEb663a277c80db355aAf749fa3eb, 100000 * 1e18);
-        // chooseMeToken.transfer(0xcCA370146cabEb663a277c80db355aAf749fa3eb, 100000 * 1e6);
+        usdt.transfer(0xD837FF8cb366D1f9ebDB0659b066b709804D52bc, 100000 * 1e18);
+        chooseMeToken.transfer(0xD837FF8cb366D1f9ebDB0659b066b709804D52bc, 100000 * 1e6);
+
+        chooseMeToken.transfer(0x7f345497612FbA3DFb923b422D67108BB5894EA6, 100000 * 1e6);
+        chooseMeToken.transfer(0x7f345497612FbA3DFb923b422D67108BB5894EA6, 100000 * 1e6);
+
+        chooseMeToken.transfer(0xcCA370146cabEb663a277c80db355aAf749fa3eb, 100000 * 1e6);
+        chooseMeToken.transfer(0xcCA370146cabEb663a277c80db355aAf749fa3eb, 100000 * 1e6);
+        vm.stopBroadcast();
+    }
+
+    /// @notice 测试 StakingManager.swapBurn 功能
+    /// @dev 集成测试 swapBurn 方法：用 USDT 交换 CMT 然后销毁
+    function testSwapBurn(uint256 deployerPrivateKey) internal {
+        vm.startBroadcast(deployerPrivateKey);
+        address deployerAddress = vm.addr(deployerPrivateKey);
+
+        console.log("\n=== StakingManager SwapBurn Integration Test ===");
+        console.log("Deployer Address:", deployerAddress);
+
+        // 1. 检查 StakingManager 的配置
+        address poolAddress = stakingManager.pool();
+        address stakingOperatorManager = stakingManager.stakingOperatorManager();
+        console.log("StakingManager Pool:", poolAddress);
+        console.log("StakingOperatorManager:", stakingOperatorManager);
+
+        require(poolAddress != address(0), "Pool not set in StakingManager");
+
+        // 2. 准备测试资金 - 向 StakingManager 转入 USDT
+        uint256 testSwapAmount = 100 * 1e18; // 100 USDT
+        uint256 stakingManagerUsdtBalance = usdt.balanceOf(address(stakingManager));
+        console.log("\nBefore Test:");
+        console.log("  StakingManager USDT Balance:", stakingManagerUsdtBalance);
+
+        // 如果 StakingManager 余额不足，从 deployer 转入
+        if (stakingManagerUsdtBalance < testSwapAmount) {
+            uint256 deployerBalance = usdt.balanceOf(deployerAddress);
+            console.log("  Deployer USDT Balance:", deployerBalance);
+            require(deployerBalance >= testSwapAmount, "Deployer: Insufficient USDT for test");
+
+            console.log("  Transferring USDT to StakingManager...");
+            usdt.transfer(address(stakingManager), testSwapAmount);
+            stakingManagerUsdtBalance = usdt.balanceOf(address(stakingManager));
+            console.log("  StakingManager USDT Balance After Transfer:", stakingManagerUsdtBalance);
+        }
+
+        // 3. 获取初始余额和总供应量
+        uint256 cmtTotalSupplyBefore = chooseMeToken.totalSupply();
+        uint256 stakingManagerCmtBalanceBefore = chooseMeToken.balanceOf(address(stakingManager));
+
+        console.log("\nBefore swapBurn:");
+        console.log("  CMT Total Supply:", cmtTotalSupplyBefore);
+        console.log("  StakingManager CMT Balance:", stakingManagerCmtBalanceBefore);
+        console.log("  Swap Amount: ", testSwapAmount, "USDT");
+
+        // 4. 执行 swapBurn
+        // 注意：swapBurn 只能由 stakingOperatorManager 调用
+        // 如果当前部署者不是 stakingOperatorManager，测试将失败
+        // 需要确保部署时正确设置了 stakingOperatorManager 或使用正确的账户执行此测试
+        console.log("\n--- Calling StakingManager.swapBurn ---");
+
+        if (deployerAddress != stakingOperatorManager) {
+            console.log("  WARNING: Deployer is not stakingOperatorManager");
+            console.log("  This call will revert. Please ensure you run this test with the correct account.");
+            console.log("  Current deployer:", deployerAddress);
+            console.log("  Required stakingOperatorManager:", stakingOperatorManager);
+        }
+
+        console.log("  Amount:", testSwapAmount);
+
+        // 记录调用前的池子状态
+        IPancakeV3Pool pool = IPancakeV3Pool(poolAddress);
+        (uint160 sqrtPriceX96Before,,,,,,) = pool.slot0();
+        console.log("  Pool SqrtPriceX96 Before:", sqrtPriceX96Before);
+
+        // 执行 swapBurn
+        stakingManager.swapBurn(testSwapAmount);
+
+        // 5. 验证结果
+        console.log("\n--- Verifying Results ---");
+
+        // 获取调用后的余额和总供应量
+        uint256 cmtTotalSupplyAfter = chooseMeToken.totalSupply();
+        uint256 stakingManagerCmtBalanceAfter = chooseMeToken.balanceOf(address(stakingManager));
+        uint256 stakingManagerUsdtBalanceAfter = usdt.balanceOf(address(stakingManager));
+
+        console.log("After swapBurn:");
+        console.log("  CMT Total Supply:", cmtTotalSupplyAfter);
+        console.log("  CMT Burned:", cmtTotalSupplyBefore - cmtTotalSupplyAfter);
+        console.log("  StakingManager CMT Balance:", stakingManagerCmtBalanceAfter);
+        console.log("  StakingManager USDT Balance:", stakingManagerUsdtBalanceAfter);
+        console.log("  USDT Used:", stakingManagerUsdtBalance - stakingManagerUsdtBalanceAfter);
+
+        // 记录调用后的池子状态
+        (uint160 sqrtPriceX96After,,,,,,) = pool.slot0();
+        console.log("  Pool SqrtPriceX96 After:", sqrtPriceX96After);
+
+        // 验证 CMT 总供应量减少
+        require(cmtTotalSupplyAfter < cmtTotalSupplyBefore, "CMT should be burned");
+
+        // 验证 USDT 被使用
+        require(stakingManagerUsdtBalanceAfter < stakingManagerUsdtBalance, "USDT should be used for swap");
+
+        uint256 cmtBurned = cmtTotalSupplyBefore - cmtTotalSupplyAfter;
+        uint256 usdtUsed = stakingManagerUsdtBalance - stakingManagerUsdtBalanceAfter;
+
+        console.log("\n[SUCCESS] SwapBurn test completed!");
+        console.log("  Summary:");
+        console.log("    USDT Swapped:", usdtUsed);
+        console.log("    CMT Burned:", cmtBurned);
+        console.log("    Effective Rate: 1 USDT =", (cmtBurned * 1e18) / (usdtUsed * 1e6), "* 1e-18 CMT");
+
         vm.stopBroadcast();
     }
 }

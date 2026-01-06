@@ -62,7 +62,7 @@ contract ChooseMeToken is Initializable, ERC20Upgradeable, ERC20BurnableUpgradea
      * @dev Set DAO reward pool address
      * @param _stakingManager 质押
      */
-    function setDaoRewardPool(address _stakingManager) external onlyOwner {
+    function setStakingManager(address _stakingManager) external onlyOwner {
         stakingManager = _stakingManager;
         emit SetStakingManager(_stakingManager);
     }

@@ -103,7 +103,7 @@ contract DeployStakingScript is Script {
         chooseMeTokenProxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(address(chooseMeToken)),
             address(chooseMeTokenImplementation),
-            abi.encodeWithSelector(ChooseMeToken.initialize.selector, deployerAddress, address(daoRewardManager))
+            abi.encodeWithSelector(ChooseMeToken.initialize.selector, deployerAddress, address(stakingManager))
         );
 
         nodeManagerProxyAdmin.upgradeAndCall(
@@ -168,15 +168,15 @@ contract DeployStakingScript is Script {
 
         vm.stopBroadcast();
 
-        string memory obj = "{}";
-        vm.serializeAddress(obj, "usdtTokenAddress", usdtTokenAddress);
-        vm.serializeAddress(obj, "proxyChooseMeToken", proxyChooseMeToken);
-        vm.serializeAddress(obj, "proxyStakingManager", proxyStakingManager);
-        vm.serializeAddress(obj, "proxyNodeManager", proxyNodeManager);
-        vm.serializeAddress(obj, "proxyDaoRewardManager", proxyDaoRewardManager);
-        vm.serializeAddress(obj, "proxyFomoTreasureManager", proxyFomoTreasureManager);
-        string memory finalJSON = vm.serializeAddress(obj, "proxyEventFundingManager", proxyEventFundingManager);
-        vm.writeJson(finalJSON, "./cache/__deployed_addresses.json");
+        // string memory obj = "{}";
+        // vm.serializeAddress(obj, "usdtTokenAddress", usdtTokenAddress);
+        // vm.serializeAddress(obj, "proxyChooseMeToken", proxyChooseMeToken);
+        // vm.serializeAddress(obj, "proxyStakingManager", proxyStakingManager);
+        // vm.serializeAddress(obj, "proxyNodeManager", proxyNodeManager);
+        // vm.serializeAddress(obj, "proxyDaoRewardManager", proxyDaoRewardManager);
+        // vm.serializeAddress(obj, "proxyFomoTreasureManager", proxyFomoTreasureManager);
+        // string memory finalJSON = vm.serializeAddress(obj, "proxyEventFundingManager", proxyEventFundingManager);
+        // vm.writeJson(finalJSON, "./cache/__deployed_addresses.json");
     }
 
     function getProxyAdminAddress(address proxy) internal view returns (address) {
@@ -211,4 +211,6 @@ contract DeployStakingScript is Script {
             usdtTokenAddress = vm.envAddress("USDT_TOKEN_ADDRESS");
         }
     }
+
+    
 }

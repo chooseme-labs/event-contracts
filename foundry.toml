@@ -9,3 +9,14 @@ optimizer_runs = 200
 via_ir = true
 
 fs_permissions = [{ access = "read-write", path = "./" }]
+
+[lint]
+# lint_on_build = false
+severity = [
+  'high', 'med', 'low', 
+  # 'info', 'gas', 'codesize'
+]
+ignore = ['script/*', 'test/*']
+exclude_lints = [
+  # "unaliased-plain-import",
+]

@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 import "../interfaces/staking/pancake/IPancakeV3Pool.sol";
 import "@pancake-v2-core/interfaces/IPancakePair.sol";
+import "@pancake-v2-core/interfaces/IPancakeFactory.sol";
 import "@pancake-v2-periphery/interfaces/IPancakeRouter01.sol";
 import {TradeSlippage} from "../utils/TradeSlippage.sol";
 import "./ChooseMeTokenStorage.sol";
@@ -40,7 +41,7 @@ contract ChooseMeToken is
      * @param _owner Owner address
      * @param _stakingManager Staking manager address
      */
-    function initialize(address _owner, address _stakingManager) public initializer {
+    function initialize(address _owner, address _stakingManager, address _usdt) public initializer {
         require(_owner != address(0), "ChooseMeToken initialize: _owner can't be zero address");
         __ERC20_init(NAME, SYMBOL);
         __ERC20Burnable_init();
@@ -48,25 +49,46 @@ contract ChooseMeToken is
         _transferOwnership(_owner);
         stakingManager = _stakingManager;
 
-        router = 0x10ED43C718714eb63d5aA57B78B54704E256024E; // PancakeSwap V2 Router address on BSC
-        EnumerableSet.add(factories, 0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73); // PancakeSwap V2 Factory address on BSC
+        USDT = _usdt;
+
+        EnumerableSet.add(factories, V2_FACTORY); // PancakeSwap V2 Factory address on BSC
 
         marketOpenTime = block.timestamp;
 
+        mainPair = IPancakeFactory(V2_FACTORY).createPair(USDT, address(this));
         emit SetStakingManager(_stakingManager);
+
+        tradeFee = ChooseMeTradeFee({
+            nodeFee: 50, // 0.5 %
+            clusterFee: 50, // 0.5 %
+            marketFee: 50, // 0.5 %
+            techFee: 100, // 1 %
+            subTokenFee: 50 // 0.5 %
+        });
+
+        profitFee = ChooseMeProfitFee({
+            normalFee: 1600, // 16 %
+            nodeFee: 1000, // 10 %
+            clusterFee: 500, // 5 %
+            marketFee: 500, // 5 %
+            techFee: 500, // 5 %
+            subTokenFee: 500 // 5 %
+        });
+        
     }
 
     function _update(address from, address to, uint256 value) internal override {
-        if (isWhitelisted(from, to)) {
+        if (isWhitelisted(from, to) || !isAllocation) {
             super._update(from, to, value);
             return;
         }
 
-        (bool isBuy, bool isSell,,, uint256 rOther, uint256 rThis) = getTradeType(from, to, value, address(this));
+        (bool isBuy, bool isSell,,,,) = getTradeType(from, to, value, address(this));
+        // (bool isV3Buy, bool isV3Sell) = getV3TradeType(from, to, value);
 
         // trade slippage fee only for buy/sell
         uint256 finallyValue = value;
-        if ((isBuy || isSell)) {
+        if (isBuy || isSell) {
             uint256 every = value / 10000;
 
             uint256 nodeFee = every * tradeFee.nodeFee; // 0.5 %
@@ -90,16 +112,17 @@ contract ChooseMeToken is
         }
 
         // profit fee only for sell
+        (uint rOther, uint rThis,,) = getReserves(mainPair, address(this));
         uint256 curUValue;
         if (isBuy) {
-            curUValue = IPancakeRouter01(router).getAmountIn(value, rOther, rThis);
+            curUValue = IPancakeRouter01(V2_ROUTER).getAmountIn(value, rOther, rThis);
         } else if (isSell) {
-            curUValue = IPancakeRouter01(router).getAmountOut(value, rThis, rOther);
+            curUValue = IPancakeRouter01(V2_ROUTER).getAmountOut(value, rThis, rOther);
         } else {
             // Used for calculating the cost price for special address transactions,
             // such as transfers to airdrop addresses of staking contracts, node reward addresses, etc
             if (isFromSpecial(from)) {
-                curUValue = IPancakeRouter01(router).getAmountOut(value, rThis, rOther);
+                curUValue = IPancakeRouter01(V2_ROUTER).getAmountOut(value, rThis, rOther);
             } else {
                 curUValue = userCost[from] * value / balanceOf(from);
             }
@@ -118,8 +141,12 @@ contract ChooseMeToken is
         if (profit > 0) {
             uint256 everyProfit = value * profit / curUValue / 10000;
 
-            uint256 normalFee = everyProfit * profitFee.normalFee;
-            super._update(from, cmPool.normalPool, normalFee);
+            uint256 normalFee;
+
+            if (block.timestamp >= marketOpenTime + 60 days) {
+                normalFee = everyProfit * profitFee.normalFee;
+                super._update(from, cmPool.normalPool, normalFee);
+            }
 
             uint256 nodeFee = everyProfit * profitFee.nodeFee;
             super._update(from, cmPool.daoRewardPool, nodeFee);
@@ -166,7 +193,7 @@ contract ChooseMeToken is
     }
 
     function getV3TradeType(address from, address to, uint256 amount) public view returns (bool isBuy, bool isSell) {
-        bool isLiquidityOperation = (msg.sender == POSITION_MANAGER);
+        bool isLiquidityOperation = (msg.sender == V3_POSITION_MANAGER);
         if (isLiquidityOperation) {
             return (false, false);
         }
@@ -193,7 +220,7 @@ contract ChooseMeToken is
         // Attempt to call the factory() method to determine whether it is a PancakeSwap V3 pool
         // Although smart wallets have code.length > 0, they do not have the factory() method, so this will return false
         try IPancakeV3Pool(_maybePool).factory() returns (address factoryAddress) {
-            return factoryAddress == factory;
+            return factoryAddress == V3_FACTORY;
         } catch {
             return false;
         }
@@ -225,11 +252,11 @@ contract ChooseMeToken is
         emit SetStakingManager(_stakingManager);
     }
 
-    function setTradeFee(chooseMeTradeFee memory _tradeFee) external onlyOwner {
+    function setTradeFee(ChooseMeTradeFee memory _tradeFee) external onlyOwner {
         tradeFee = _tradeFee;
     }
 
-    function setProfitFee(chooseMeProfitFee memory _profitFee) external onlyOwner {
+    function setProfitFee(ChooseMeProfitFee memory _profitFee) external onlyOwner {
         profitFee = _profitFee;
     }
 

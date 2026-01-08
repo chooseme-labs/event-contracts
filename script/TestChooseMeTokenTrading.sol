@@ -182,23 +182,8 @@ contract TestChooseMeTokenTrading is Script {
     function setupFeeReceivers(address deployer) internal {
         console.log("\n=== Step 1: Setting Up Fee Receivers ===");
 
-        // 设置 factory 地址
-        try chooseMeToken.factory() returns (address currentFactory) {
-            if (currentFactory == address(0)) {
-                console.log("Setting factory address...");
-                chooseMeToken.setFactory(PANCAKE_V3_FACTORY);
-                console.log("Factory set to:", PANCAKE_V3_FACTORY);
-            } else {
-                console.log("Factory already set to:", currentFactory);
-            }
-        } catch {
-            console.log("Setting factory address...");
-            chooseMeToken.setFactory(PANCAKE_V3_FACTORY);
-            console.log("Factory set to:", PANCAKE_V3_FACTORY);
-        }
-
         // 读取当前池地址配置 - 检查 nodePool 是否已设置
-        (address currentNodePool,,,,,,,) = chooseMeToken.cmPool();
+        (address currentNodePool,,,,,,,,) = chooseMeToken.cmPool();
 
         if (currentNodePool == address(0)) {
             console.log("Pool addresses not set, configuring...");
@@ -211,6 +196,7 @@ contract TestChooseMeTokenTrading is Script {
             ChooseMeTokenStorage.chooseMePool memory pool = ChooseMeTokenStorage.chooseMePool({
                 nodePool: nodePool,
                 daoRewardPool: makeAddr("daoRewardPool"),
+                normalPool: deployerAddress,
                 airdropPool: deployerAddress,
                 techRewardsPool: deployerAddress,
                 ecosystemPool: makeAddr("ecosystemPool"),
@@ -224,6 +210,7 @@ contract TestChooseMeTokenTrading is Script {
         } else {
             // 读取所有池地址
             (
+                address _normalPool,
                 address _nodePool,
                 address _daoRewardPool,
                 address _airdropPool,

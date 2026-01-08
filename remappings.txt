@@ -12,3 +12,16 @@ solmate/=lib/solmate/src/
 @contracts/=src/contracts/
 @/=src/
 @openzeppelin-foundry-upgrades=lib/openzeppelin-foundry-upgrades/src/
+@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/
+
+@pancake-v3-router/=lib/pancake-v3-contracts/projects/router/contracts/
+@pancakeswap/v3-router/contracts/=lib/pancake-v3-contracts/projects/router/contracts/
+
+@pancake-v3-core/=lib/pancake-v3-contracts/projects/v3-core/contracts/
+@pancakeswap/v3-core/contracts/=lib/pancake-v3-contracts/projects/v3-core/contracts/
+
+@pancake-v3-periphery/=lib/pancake-v3-contracts/projects/v3-periphery/contracts/
+@pancakeswap/v3-periphery/contracts/=lib/pancake-v3-contracts/projects/v3-periphery/contracts/
+
+@pancake-v2-core/=lib/pancake-swap-core/contracts/
+@pancake-v2-periphery/=lib/pancake-swap-periphery/contracts/

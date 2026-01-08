@@ -931,6 +931,7 @@ contract IntegratedTestStakingScript is Script {
                 nodePool: address(nodeManager),
                 daoRewardPool: address(daoRewardManager),
                 airdropPool: deployerAddress,
+                normalPool: deployerAddress,
                 techRewardsPool: deployerAddress,
                 ecosystemPool: deployerAddress,
                 foundingStrategyPool: deployerAddress,

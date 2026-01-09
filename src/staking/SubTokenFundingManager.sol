@@ -43,33 +43,6 @@ contract SubTokenFundingManager is
     }
 
     /**
-     * @dev Set trading pool address
-     * @param _pool Pancake V3 trading pool address
-     */
-    function setPool(address _pool) external onlyOwner {
-        require(_pool != address(0), "Invalid pool address");
-        pool = _pool;
-    }
-
-    /**
-     * @dev Set pool type for liquidity operations
-     * @param _poolType Pool type (1 for PancakeSwap V2, 2 for PancakeSwap V3)
-     */
-    function setPoolType(uint8 _poolType) external onlyOwner {
-        require(_poolType == 1 || _poolType == 2, "Invalid pool type");
-        poolType = _poolType;
-    }
-
-    /**
-     * @dev Set liquidity position NFT ID
-     * @param _tokenId NFT Token ID of Pancake V3 liquidity position
-     */
-    function setPositionTokenId(uint256 _tokenId) external onlyOwner {
-        require(_tokenId > 0, "Invalid token ID");
-        positionTokenId = _tokenId;
-    }
-
-    /**
      * @dev Add liquidity to trading pool
      * @param amount Amount of underlying token to add to liquidity pool
      */
@@ -77,17 +50,11 @@ contract SubTokenFundingManager is
         require(amount > 0, "Amount must be greater than 0");
         require(amount <= IERC20(underlyingToken).balanceOf(address(this)), "Insufficient balance");
 
-        if (poolType == 1) {
-            (uint256 liquidityAdded, uint256 amount0Used, uint256 amount1Used) =
-                SwapHelper.addLiquidityV2(V2_ROUTER, underlyingToken, USDT, amount, address(this));
+        uint256 usdtAmount = SwapHelper.swapV2(V2_ROUTER, underlyingToken, USDT, amount, address(this));
 
-            emit LiquidityAdded(1, 0, liquidityAdded, amount0Used, amount1Used);
-        } else {
-            (uint256 liquidityAdded, uint256 amount0Used, uint256 amount1Used) = SwapHelper.addLiquidityV3(
-                POSITION_MANAGER, pool, positionTokenId, underlyingToken, USDT, amount, SLIPPAGE_TOLERANCE
-            );
+        (uint256 liquidityAdded, uint256 amount0Used, uint256 amount1Used) =
+            SwapHelper.addLiquidityV2(V2_ROUTER, USDT, subToken, usdtAmount, address(this));
 
-            emit LiquidityAdded(2, positionTokenId, liquidityAdded, amount0Used, amount1Used);
-        }
+        emit LiquidityAdded(liquidityAdded, amount0Used, amount1Used);
     }
 }

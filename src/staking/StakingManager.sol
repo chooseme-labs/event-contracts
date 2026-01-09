@@ -10,13 +10,13 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/token/IDaoRewardManager.sol";
 import "../interfaces/token/IChooseMeToken.sol";
 import "../interfaces/staking/IEventFundingManager.sol";
-import "../utils/SwapV2Helper.sol";
+import "../utils/SwapHelper.sol";
 
 import {StakingManagerStorage} from "./StakingManagerStorage.sol";
 
 contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeable, StakingManagerStorage {
     using SafeERC20 for IERC20;
-    using SwapV2Helper for *;
+    using SwapHelper for *;
 
     constructor() {
         _disableInitializers();
@@ -54,33 +54,6 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
         stakingOperatorManager = _stakingOperatorManager;
         daoRewardManager = IDaoRewardManager(_daoRewardManager);
         eventFundingManager = IEventFundingManager(_eventFundingManager);
-    }
-
-    /**
-     * @dev Set trading pool address
-     * @param _pool Pancake V3 trading pool address
-     */
-    function setPool(address _pool) external onlyOwner {
-        require(_pool != address(0), "Invalid pool address");
-        pool = _pool;
-    }
-
-    /**
-     * @dev Set pool type for liquidity operations
-     * @param _poolType Pool type (1 for PancakeSwap V2, 2 for PancakeSwap V3)
-     */
-    function setPoolType(uint8 _poolType) external onlyOwner {
-        require(_poolType == 1 || _poolType == 2, "Invalid pool type");
-        poolType = _poolType;
-    }
-
-    /**
-     * @dev Set liquidity position NFT ID
-     * @param _tokenId NFT Token ID of Pancake V3 liquidity position
-     */
-    function setPositionTokenId(uint256 _tokenId) external onlyOwner {
-        require(_tokenId > 0, "Invalid token ID");
-        positionTokenId = _tokenId;
     }
 
     /**
@@ -124,21 +97,22 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
 
         currentLiquidityProvider[msg.sender][lpStakingRound[msg.sender]] = lpInfo;
 
-        if (totalLpStakingReward[msg.sender].liquidityProvider != address(0)) {
+        if (totalLpStakingReward[msg.sender].liquidityProvider == address(0)) {
             totalLpStakingReward[msg.sender] = LiquidityProviderStakingReward({
                 liquidityProvider: msg.sender,
-                totalStaking: amount,
+                totalStaking: 0,
                 totalReward: 0,
+                claimedReward: 0,
                 dailyNormalReward: 0,
                 directReferralReward: 0,
                 teamReferralReward: 0,
                 fomoPoolReward: 0
             });
-        } else {
-            totalLpStakingReward[msg.sender].totalStaking += amount;
         }
 
+        totalLpStakingReward[msg.sender].totalStaking += amount;
         lpStakingRound[msg.sender] += 1;
+        teamOutOfReward[msg.sender] = false;
 
         emit LiquidityProviderDeposits(USDT, stakingType, msg.sender, amount, block.timestamp, endStakingTime);
     }
@@ -164,30 +138,25 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
     {
         require(lpAddress != address(0), "StakingManager.createLiquidityProviderReward: zero address");
         require(amount > 0, "StakingManager.createLiquidityProviderReward: amount should more than zero");
+        require(teamOutOfReward[lpAddress] == false, "StakingManager.createLiquidityProviderReward: team out of reward");
+
+        totalLpStakingReward[lpAddress].totalReward += amount;
+        uint256 usdtRewardAmount = IChooseMeToken(underlyingToken).quote(totalLpStakingReward[lpAddress].totalReward);
+        if(usdtRewardAmount > totalLpStakingReward[lpAddress].totalStaking * 3){
+            outOfAchieveReturnsNode(lpAddress, totalLpStakingReward[lpAddress].totalReward);
+        }
 
         if (incomeType == uint8(StakingRewardType.DailyNormalReward)) {
             totalLpStakingReward[lpAddress].dailyNormalReward += amount;
         } else if (incomeType == uint8(StakingRewardType.DirectReferralReward)) {
             totalLpStakingReward[lpAddress].directReferralReward += amount;
-        } else if (incomeType == uint8(StakingRewardType.TeamReferralReward) && !teamOutOfReward[lpAddress]) {
-            uint256 teamRewardAmount = totalLpStakingReward[lpAddress].teamReferralReward; // CMT
-            uint256 totalStakingAmount = totalLpStakingReward[lpAddress].totalStaking; // USDT
-
-            uint256 stakingToCmt = totalStakingAmount; // TODO: Read Oracle price, convert CMT to USDT
-
-            if ((teamRewardAmount + amount) < stakingToCmt * 3) {
-                totalLpStakingReward[lpAddress].teamReferralReward += amount;
-            } else {
-                uint256 lastTeamReward = (teamRewardAmount + amount) - (stakingToCmt * 3);
-                totalLpStakingReward[lpAddress].teamReferralReward += lastTeamReward;
-                outOfAchieveReturnsNode(lpAddress, totalLpStakingReward[lpAddress].teamReferralReward);
-            }
+        } else if (incomeType == uint8(StakingRewardType.TeamReferralReward)) {
+            totalLpStakingReward[lpAddress].teamReferralReward += amount;
         } else if (incomeType == uint8(StakingRewardType.FomoPoolReward)) {
             totalLpStakingReward[lpAddress].fomoPoolReward += amount;
         } else {
             revert InvalidRewardTypeError(incomeType);
         }
-        totalLpStakingReward[lpAddress].totalReward += amount;
 
         emit LiquidityProviderRewards({
             liquidityProvider: lpAddress, amount: amount, rewardBlock: block.number, incomeType: incomeType
@@ -223,24 +192,19 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
     function liquidityProviderClaimReward(uint256 amount) external {
         require(amount > 0, "StakingManager.liquidityProviderClaimReward: reward amount must more than zero");
 
-        if (amount > totalLpStakingReward[msg.sender].totalReward) {
+        if (amount > totalLpStakingReward[msg.sender].totalReward - totalLpStakingReward[msg.sender].claimedReward) {
             revert InvalidRewardAmount(msg.sender, amount);
         }
 
-        totalLpStakingReward[msg.sender].totalReward -= amount;
+        totalLpStakingReward[msg.sender].claimedReward += amount;
 
         uint256 toEventPredictionAmount = (amount * 20) / 100;
 
         if (toEventPredictionAmount > 0) {
             daoRewardManager.withdraw(address(this), toEventPredictionAmount);
 
-            uint256 usdtAmount;
-            if (poolType == 1) {
-                usdtAmount = SwapHelper.swapV2(V2_ROUTER, underlyingToken, USDT, toEventPredictionAmount, address(this));
-            } else {
-                usdtAmount = SwapHelper.swapV3(pool, underlyingToken, USDT, toEventPredictionAmount, address(this));
-            }
-
+            uint256 usdtAmount =
+                SwapHelper.swapV2(V2_ROUTER, underlyingToken, USDT, toEventPredictionAmount, address(this));
             IERC20(USDT).approve(address(eventFundingManager), usdtAmount);
             eventFundingManager.depositUsdt(usdtAmount);
         }
@@ -264,22 +228,10 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
     function addLiquidity(uint256 amount) external onlyStakingOperatorManager {
         require(amount > 0, "Amount must be greater than 0");
 
-        require(pool != address(0), "Pool not set");
-        require(amount > 0, "Amount must be greater than 0");
-        require(positionTokenId > 0, "Position token not initialized");
+        (uint256 liquidityAdded, uint256 amount0Used, uint256 amount1Used) =
+            SwapHelper.addLiquidityV2(V2_ROUTER, USDT, underlyingToken, amount, address(this));
 
-        if (poolType == 1) {
-            (uint256 liquidityAdded, uint256 amount0Used, uint256 amount1Used) =
-                SwapHelper.addLiquidityV2(V2_ROUTER, USDT, underlyingToken, amount, address(this));
-
-            emit LiquidityAdded(1, 0, liquidityAdded, amount0Used, amount1Used);
-        } else {
-            (uint256 liquidityAdded, uint256 amount0Used, uint256 amount1Used) = SwapHelper.addLiquidityV3(
-                POSITION_MANAGER, pool, positionTokenId, USDT, underlyingToken, amount, SLIPPAGE_TOLERANCE
-            );
-
-            emit LiquidityAdded(2, positionTokenId, liquidityAdded, amount0Used, amount1Used);
-        }
+        emit LiquidityAdded(liquidityAdded, amount0Used, amount1Used);
     }
 
     /**
@@ -289,13 +241,7 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
     function swapBurn(uint256 amount) external onlyStakingOperatorManager {
         require(amount > 0, "Amount must be greater than 0");
 
-        uint256 underlyingTokenReceived;
-        if (poolType == 1) {
-            underlyingTokenReceived = SwapHelper.swapV2(V2_ROUTER, USDT, underlyingToken, amount, address(this));
-        } else {
-            underlyingTokenReceived = SwapHelper.swapV3(pool, USDT, underlyingToken, amount, address(this));
-        }
-
+        uint256 underlyingTokenReceived = SwapHelper.swapV2(V2_ROUTER, USDT, underlyingToken, amount, address(this));
         require(underlyingTokenReceived > 0, "No tokens received from swap");
         IChooseMeToken(underlyingToken).burn(address(this), underlyingTokenReceived);
 
@@ -340,13 +286,13 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
     /**
      * @dev Mark node as having reached team reward limit (3x staking amount)
      * @param lpAddress Liquidity provider address
-     * @param teamRewardAmount Total team reward amount
+     * @param totalReward Total team reward amount
      */
-    function outOfAchieveReturnsNode(address lpAddress, uint256 teamRewardAmount) internal {
+    function outOfAchieveReturnsNode(address lpAddress, uint256 totalReward) internal {
         teamOutOfReward[lpAddress] = true;
 
         emit outOfAchieveReturnsNodeExit({
-            liquidityProvider: lpAddress, teamReward: teamRewardAmount, blockNumber: block.number
+            liquidityProvider: lpAddress, totalReward: totalReward, blockNumber: block.number
         });
     }
 }

@@ -7,8 +7,6 @@ import "../interfaces/token/IChooseMeToken.sol";
 abstract contract ChooseMeTokenStorage is IChooseMeToken {
     uint256 public constant MaxTotalSupply = 1_000_000_000 * 10 ** 6;
 
-    address public constant V3_POSITION_MANAGER = 0x46A15B0b27311cedF172AB29E4f4766fbE7F4364;
-    address public constant V3_FACTORY = 0x0BFbCF9fa4f9C56B0F40a671Ad40E0805A091865;
     address public USDT;
     address public constant V2_ROUTER = 0x10ED43C718714eb63d5aA57B78B54704E256024E;
     address public constant V2_FACTORY = 0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73;

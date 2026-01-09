@@ -74,7 +74,6 @@ contract ChooseMeToken is
             techFee: 500, // 5 %
             subTokenFee: 500 // 5 %
         });
-        
     }
 
     /**
@@ -92,7 +91,6 @@ contract ChooseMeToken is
         }
 
         (bool isBuy, bool isSell,,,,) = getTradeType(from, to, value, address(this));
-        // (bool isV3Buy, bool isV3Sell) = getV3TradeType(from, to, value);
 
         // trade slippage fee only for buy/sell
         uint256 finallyValue = value;
@@ -120,7 +118,7 @@ contract ChooseMeToken is
         }
 
         // profit fee only for sell
-        (uint rOther, uint rThis,,) = getReserves(mainPair, address(this));
+        (uint256 rOther, uint256 rThis,,) = getReserves(mainPair, address(this));
         uint256 curUValue;
         if (isBuy) {
             curUValue = IPancakeRouter01(V2_ROUTER).getAmountIn(value, rOther, rThis);
@@ -146,7 +144,7 @@ contract ChooseMeToken is
         userCost[from] -= fromUValue;
 
         // Profit USDT is greater than 0, a profit handling fee will be charged
-        if (profit > 0) {
+        if (isSell && profit > 0) {
             uint256 everyProfit = value * profit / curUValue / 10000;
 
             uint256 normalFee;
@@ -216,58 +214,6 @@ contract ChooseMeToken is
     function removeWhitelist(address[] memory _address) external onlyOwner {
         for (uint256 i = 0; i < _address.length; i++) {
             EnumerableSet.remove(whiteList, _address[i]);
-        }
-    }
-
-    /**
-     * @dev Determine if transaction is a buy or sell on PancakeSwap V3
-     * @param from Sender address
-     * @param to Recipient address
-     * @param amount Transfer amount
-     * @return isBuy True if this is a buy transaction
-     * @return isSell True if this is a sell transaction
-     */
-    function getV3TradeType(address from, address to, uint256 amount) public view returns (bool isBuy, bool isSell) {
-        bool isLiquidityOperation = (msg.sender == V3_POSITION_MANAGER);
-        if (isLiquidityOperation) {
-            return (false, false);
-        }
-
-        if (checkIsPool(from)) {
-            isBuy = true;
-        } else if (checkIsPool(to)) {
-            isSell = true;
-        }
-    }
-
-    /**
-     * @dev Check if address is a PancakeSwap V3 pool
-     * @param _maybePool Address to check
-     * @return True if address is a V3 pool
-     */
-    function checkIsPool(address _maybePool) public view returns (bool) {
-        try this._checkIsPool(_maybePool) returns (bool isPool) {
-            return isPool;
-        } catch {
-            return false;
-        }
-    }
-
-    /**
-     * @dev Internal function to verify if address is a PancakeSwap V3 pool by calling factory() method
-     * @param _maybePool Address to check
-     * @return True if address has valid factory() method and factory matches V3_FACTORY
-     */
-    function _checkIsPool(address _maybePool) public view returns (bool) {
-        if (_maybePool.code.length == 0) {
-            return false;
-        }
-        // Attempt to call the factory() method to determine whether it is a PancakeSwap V3 pool
-        // Although smart wallets have code.length > 0, they do not have the factory() method, so this will return false
-        try IPancakeV3Pool(_maybePool).factory() returns (address factoryAddress) {
-            return factoryAddress == V3_FACTORY;
-        } catch {
-            return false;
         }
     }
 
@@ -392,6 +338,11 @@ contract ChooseMeToken is
             _pool.marketingDevelopmentPool != address(0),
             "ChooseMeToken _beforeAllocation:Missing allocate marketingDevelopmentPool address"
         );
+    }
+
+    function quote(uint amount) public view returns (uint256) {
+        (uint256 rOther, uint256 rThis,,) = getReserves(mainPair, address(this));
+        return IPancakeRouter01(V2_ROUTER).getAmountOut(amount, rThis, rOther);
     }
 }
 

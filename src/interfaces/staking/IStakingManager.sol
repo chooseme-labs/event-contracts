@@ -44,6 +44,7 @@ interface IStakingManager {
         address liquidityProvider;
         uint256 totalStaking;
         uint256 totalReward;
+        uint256 claimedReward;
         uint256 dailyNormalReward;
         uint256 directReferralReward;
         uint256 teamReferralReward;
@@ -80,14 +81,11 @@ interface IStakingManager {
 
     event outOfAchieveReturnsNodeExit (
         address indexed liquidityProvider,
-        uint256 teamReward,
+        uint256 totalReward,
         uint256  blockNumber
     );
 
-    // 1 pancake v2 liquidity; 2 pancake v3 liquidity ; 
     event LiquidityAdded (
-        uint8 indexed poolType,
-        uint256 indexed tokenId,
         uint256 liquidity,
         uint256 amount0,
         uint256 amount1

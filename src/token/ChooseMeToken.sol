@@ -98,6 +98,8 @@ contract ChooseMeToken is
             return;
         }
 
+        uint256 finallyValue = value;
+
         (bool isBuy, bool isSell,,,,) = getTradeType(from, to, value, address(this));
         uint256 swapNodeFee;
         uint256 swapClusterFee;
@@ -115,10 +117,9 @@ contract ChooseMeToken is
             swapTechFee = every * tradeFee.techFee;
             swapSubFee = every * tradeFee.subTokenFee;
 
+            finallyValue = finallyValue - (swapNodeFee + swapClusterFee + swapMarketFee + swapTechFee + swapSubFee);
             emit TradeSlipage(value, swapNodeFee, swapClusterFee, swapMarketFee, swapTechFee, swapSubFee);
         }
-
-        uint256 finallyValue = value - (swapNodeFee + swapClusterFee + swapMarketFee + swapTechFee + swapSubFee);
 
         uint256 profitNodeFee;
         uint256 profitClusterFee;
@@ -137,11 +138,10 @@ contract ChooseMeToken is
             profitTechFee = everyProfit * profitFee.techFee;
             profitSubFee = everyProfit * profitFee.subTokenFee;
 
+            finallyValue =
+                finallyValue - (profitNodeFee + profitClusterFee + profitMarketFee + profitTechFee + profitSubFee);
             emit ProfitSlipage(value, profitNodeFee, profitClusterFee, profitMarketFee, profitTechFee, profitSubFee);
         }
-
-        finallyValue =
-            finallyValue - (profitNodeFee + profitClusterFee + profitMarketFee + profitTechFee + profitSubFee);
 
         if (profitNodeFee + swapNodeFee + swapClusterFee + profitClusterFee > 0) {
             super._update(from, cmPool.daoRewardPool, profitNodeFee + swapNodeFee + swapClusterFee + profitClusterFee);
@@ -156,12 +156,14 @@ contract ChooseMeToken is
         if (swapSubFee + profitSubFee > 0) {
             cumulativeSlipage.subTokenFee += swapSubFee + profitSubFee;
         }
-        super._update(
-            from,
-            address(this),
-            swapMarketFee + profitMarketFee + swapTechFee + profitTechFee + swapSubFee + profitSubFee
-        );
 
+        if (swapMarketFee + profitMarketFee + swapTechFee + profitTechFee + swapSubFee + profitSubFee > 0) {
+            super._update(
+                from,
+                address(this),
+                swapMarketFee + profitMarketFee + swapTechFee + profitTechFee + swapSubFee + profitSubFee
+            );
+        }
         if (isSell) {
             allocateCumulativeSlipage();
         }

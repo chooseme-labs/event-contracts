@@ -129,7 +129,7 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
      * @param amount Total amount of USDT to add
      * @notice Convert 50% of USDT to underlying token, then add liquidity to V2
      */
-    function addLiquidity(uint256 amount) external onlyOwner {
+    function addLiquidity(uint256 amount) external onlyDistributeRewardManager {
         require(amount > 0, "Amount must be greater than 0");
 
         (uint256 liquidityAdded, uint256 amount0Used, uint256 amount1Used) =

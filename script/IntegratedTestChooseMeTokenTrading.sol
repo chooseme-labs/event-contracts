@@ -125,14 +125,14 @@ contract IntegratedTestChooseMeTokenTrading is Script {
         // 3. Add initial liquidity
         addInitialLiquidity();
 
-        // // 4. Test trading slippage
-        // testTradingSlippage();
+        // 4. Test trading slippage
+        testTradingSlippage();
 
-        // // 5. Test sell slippage
-        // testSellSlippage();
+        // 5. Test sell slippage
+        testSellSlippage();
 
-        // // 6. Test profit tax
-        // testProfitTax();
+        // 6. Test profit tax
+        testProfitTax();
 
         // 7. Test whitelist functionality
         testWhitelist();

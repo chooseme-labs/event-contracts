@@ -8,13 +8,13 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
-import { DaoRewardManagerStorage } from "./DaoRewardManagerStorage.sol";
+import {DaoRewardManagerStorage} from "./DaoRewardManagerStorage.sol";
 
 contract DaoRewardManager is Initializable, OwnableUpgradeable, PausableUpgradeable, DaoRewardManagerStorage {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    constructor(){
+    constructor() {
         _disableInitializers();
     }
 
@@ -33,7 +33,12 @@ contract DaoRewardManager is Initializable, OwnableUpgradeable, PausableUpgradea
      * @param initialOwner Initial owner address
      * @param _rewardTokenAddress Reward token address (CMT)
      */
-    function initialize(address initialOwner, address _rewardTokenAddress, address _nodeManager, address _stakingManager) public initializer  {
+    function initialize(
+        address initialOwner,
+        address _rewardTokenAddress,
+        address _nodeManager,
+        address _stakingManager
+    ) public initializer {
         __Ownable_init(initialOwner);
         rewardTokenAddress = _rewardTokenAddress;
         authorizedCallers.add(_nodeManager);
@@ -50,7 +55,6 @@ contract DaoRewardManager is Initializable, OwnableUpgradeable, PausableUpgradea
 
         IERC20(rewardTokenAddress).safeTransfer(recipient, amount);
     }
-
 
     // ========= internal =========
     /**

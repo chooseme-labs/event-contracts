@@ -103,13 +103,10 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
         emit DistributeNodeRewards({recipient: recipient, amount: amount, incomeType: incomeType});
     }
 
-    function distributeRewardBatch(address[] memory recipients, uint256[] memory amounts, uint8[] memory incomeTypes)
-        public
-        onlyDistributeRewardManager
-    {
-        require(recipients.length == amounts.length && recipients.length == incomeTypes.length, "Array length mismatch");
-        for (uint256 i = 0; i < recipients.length; i++) {
-            distributeRewards(recipients[i], amounts[i], incomeTypes[i]);
+    function distributeRewardBatch(BatchReward[] memory batchRewards) public onlyDistributeRewardManager {
+        for (uint256 i = 0; i < batchRewards.length; i++) {
+            BatchReward memory batchReward = batchRewards[i];
+            distributeRewards(batchReward.recipient, batchReward.amount, batchReward.incomeType);
         }
     }
 

@@ -51,6 +51,12 @@ interface IStakingManager {
         uint256 fomoPoolReward;
     }
 
+    struct BatchReward {
+        address lpAddress;
+        uint256 amount;
+        uint8 incomeType;
+    }
+
     event LiquidityProviderDeposits(
         address indexed tokenAddress,
         uint8 indexed stakingType,
@@ -85,6 +91,7 @@ interface IStakingManager {
     function getLiquidityProvidersByType(uint8 stakingType) external view returns (address[] memory);
 
     function createLiquidityProviderReward(address lpAddress, uint256 amount, uint8 incomeType) external;
+    function createLiquidityProviderRewardBatch(BatchReward[] memory batchRewards) external;
 
     function liquidityProviderRoundStakingOver(address lpAddress, uint256 lpStakingRound) external;
 

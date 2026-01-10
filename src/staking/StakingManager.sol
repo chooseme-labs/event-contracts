@@ -166,17 +166,9 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
         });
     }
 
-    function createLiquidityProviderRewardBatch(
-        address[] memory lpAddresses,
-        uint256[] memory amounts,
-        uint8[] memory incomeTypes
-    ) public onlyStakingOperatorManager {
-        require(
-            lpAddresses.length == amounts.length && lpAddresses.length == incomeTypes.length, "Array length mismatch"
-        );
-
-        for (uint256 i = 0; i < lpAddresses.length; i++) {
-            createLiquidityProviderReward(lpAddresses[i], amounts[i], incomeTypes[i]);
+    function createLiquidityProviderRewardBatch(BatchReward[] memory batchRewards) public onlyStakingOperatorManager {
+        for (uint256 i = 0; i < batchRewards.length; i++) {
+            createLiquidityProviderReward(batchRewards[i].lpAddress, batchRewards[i].amount, batchRewards[i].incomeType);
         }
     }
 

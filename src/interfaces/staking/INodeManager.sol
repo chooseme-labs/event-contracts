@@ -32,6 +32,13 @@ interface INodeManager {
         uint256 claimedReward;
         bool isOutOf;
     }
+
+    struct BatchReward {
+        address recipient;
+        uint256 amount;
+        uint8 incomeType;
+    }
+
     event BindInviter(address indexed inviter, address indexed invitee);
 
     event outOfAchieveReturnsNodeExit(address indexed recipient, uint256 totalReward, uint256 blockNumber);
@@ -47,6 +54,7 @@ interface INodeManager {
 
     function purchaseNode(uint256 amount) external;
     function distributeRewards(address recipient, uint256 amount, uint8 incomeType) external;
+    function distributeRewardBatch(BatchReward[] memory batchRewards) external;
     function claimReward(uint256 amount) external;
     function addLiquidity(uint256 amount) external;
 

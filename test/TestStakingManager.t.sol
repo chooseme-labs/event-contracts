@@ -94,6 +94,22 @@ contract MockEventFundingManager is IEventFundingManager {
     function bettingEvent(address event_pool, uint256 amount) external override {}
 }
 
+// Mock NodeManager for testing
+contract MockNodeManager {
+    mapping(address => address) public inviters;
+
+    function setInviter(address user, address inviter) external {
+        inviters[user] = inviter;
+    }
+
+    function batchSetInviters(address[] memory users, address[] memory _inviters) external {
+        require(users.length == _inviters.length, "Length mismatch");
+        for (uint256 i = 0; i < users.length; i++) {
+            inviters[users[i]] = _inviters[i];
+        }
+    }
+}
+
 // Mock PancakeRouter for testing
 contract MockPancakeRouter {
     // Simulate token swaps with a simple 1:1 ratio for testing
@@ -137,6 +153,7 @@ contract TestStakingManager is Test {
     MockChooseMeToken public cmt;
     MockDaoRewardManager public daoRewardManager;
     MockEventFundingManager public eventFundingManager;
+    MockNodeManager public nodeManager;
     MockPancakeRouter public pancakeRouter;
     ProxyAdmin public proxyAdmin;
     TransparentUpgradeableProxy public proxy;
@@ -185,6 +202,7 @@ contract TestStakingManager is Test {
         // Deploy mock managers
         daoRewardManager = new MockDaoRewardManager(address(cmt));
         eventFundingManager = new MockEventFundingManager(address(usdt));
+        nodeManager = new MockNodeManager();
 
         // Deploy mock PancakeRouter and set it at the real router address
         pancakeRouter = new MockPancakeRouter();
@@ -208,7 +226,8 @@ contract TestStakingManager is Test {
             address(usdt),
             operatorManager,
             address(daoRewardManager),
-            address(eventFundingManager)
+            address(eventFundingManager),
+            address(nodeManager)
         );
 
         proxy = new TransparentUpgradeableProxy(address(implementation), address(proxyAdmin), initData);
@@ -240,20 +259,30 @@ contract TestStakingManager is Test {
     function testCannotInitializeTwice() public {
         vm.expectRevert();
         stakingManager.initialize(
-            owner, address(cmt), address(usdt), operatorManager, address(daoRewardManager), address(eventFundingManager)
+            owner,
+            address(cmt),
+            address(usdt),
+            operatorManager,
+            address(daoRewardManager),
+            address(eventFundingManager),
+            address(nodeManager)
         );
     }
 
     // ==================== Liquidity Provider Deposit Tests ====================
 
     function testLiquidityProviderDeposit_T1() public {
+        // Set inviter for user1
+        vm.prank(owner);
+        nodeManager.setInviter(user1, user2);
+
         vm.startPrank(user1);
         usdt.approve(address(stakingManager), T1_STAKING);
 
         vm.expectEmit(true, true, true, true);
         emit LiquidityProviderDeposits(address(usdt), 0, user1, T1_STAKING, block.timestamp, 172800);
 
-        stakingManager.liquidityProviderDeposit(address(0), T1_STAKING);
+        stakingManager.liquidityProviderDeposit(T1_STAKING);
 
         // Verify staking info
         (
@@ -294,11 +323,13 @@ contract TestStakingManager is Test {
             address testUser = address(uint160(1000 + i));
             vm.startPrank(owner);
             usdt.mint(testUser, amounts[i]);
+            // Set inviter for each test user
+            nodeManager.setInviter(testUser, user2);
             vm.stopPrank();
 
             vm.startPrank(testUser);
             usdt.approve(address(stakingManager), amounts[i]);
-            stakingManager.liquidityProviderDeposit(address(0), amounts[i]);
+            stakingManager.liquidityProviderDeposit(amounts[i]);
 
             (, uint8 stakingType, uint256 amount,,,) = stakingManager.currentLiquidityProvider(testUser, 0);
             assertEq(stakingType, uint8(i));
@@ -308,57 +339,72 @@ contract TestStakingManager is Test {
     }
 
     function testLiquidityProviderDeposit_WithInviter() public {
+        // Set inviter for user1 in NodeManager
+        vm.prank(owner);
+        nodeManager.setInviter(user1, user2);
+
         vm.startPrank(user1);
         usdt.approve(address(stakingManager), T1_STAKING);
-        stakingManager.liquidityProviderDeposit(user2, T1_STAKING);
+        stakingManager.liquidityProviderDeposit(T1_STAKING);
 
-        assertEq(stakingManager.inviteRelationShip(user1), user2);
+        assertEq(nodeManager.inviters(user1), user2);
         vm.stopPrank();
     }
 
     function testLiquidityProviderDeposit_InviterCannotBeSelf() public {
+        // Don't set inviter, so it should fail due to no inviter
         vm.startPrank(user1);
         usdt.approve(address(stakingManager), T1_STAKING);
-        stakingManager.liquidityProviderDeposit(user1, T1_STAKING);
 
-        // Inviter should not be set
-        assertEq(stakingManager.inviteRelationShip(user1), address(0));
+        // Should revert because inviter is not set
+        vm.expectRevert("StakingManager.liquidityProviderDeposit: inviter not set");
+        stakingManager.liquidityProviderDeposit(T1_STAKING);
         vm.stopPrank();
     }
 
     function testLiquidityProviderDeposit_InviterSetOnlyOnce() public {
+        // Set inviter for user1
+        vm.prank(owner);
+        nodeManager.setInviter(user1, user2);
+
         vm.startPrank(user1);
         usdt.approve(address(stakingManager), T1_STAKING + T2_STAKING);
-        stakingManager.liquidityProviderDeposit(user2, T1_STAKING);
+        stakingManager.liquidityProviderDeposit(T1_STAKING);
 
         // Second deposit with different inviter should not change the relationship
         // Note: Second deposit must be >= first deposit, so use T2 which is 600 (> T1 which is 200)
-        stakingManager.liquidityProviderDeposit(user3, T2_STAKING);
+        stakingManager.liquidityProviderDeposit(T2_STAKING);
 
-        assertEq(stakingManager.inviteRelationShip(user1), user2);
+        assertEq(nodeManager.inviters(user1), user2);
         vm.stopPrank();
     }
 
     function testLiquidityProviderDeposit_RevertInvalidAmount() public {
+        vm.prank(owner);
+        nodeManager.setInviter(user1, user2);
+
         vm.startPrank(user1);
         uint256 invalidAmount = 100 * 10 ** 18;
         usdt.approve(address(stakingManager), invalidAmount);
 
         vm.expectRevert(abi.encodeWithSelector(IStakingManager.InvalidAmountError.selector, invalidAmount));
-        stakingManager.liquidityProviderDeposit(address(0), invalidAmount);
+        stakingManager.liquidityProviderDeposit(invalidAmount);
         vm.stopPrank();
     }
 
     function testLiquidityProviderDeposit_MultipleRounds() public {
+        vm.prank(owner);
+        nodeManager.setInviter(user1, user2);
+
         vm.startPrank(user1);
         usdt.approve(address(stakingManager), T1_STAKING + T2_STAKING);
 
         // First deposit
-        stakingManager.liquidityProviderDeposit(address(0), T1_STAKING);
+        stakingManager.liquidityProviderDeposit(T1_STAKING);
         assertEq(stakingManager.lpStakingRound(user1), 1);
 
         // Second deposit (must be >= previous)
-        stakingManager.liquidityProviderDeposit(address(0), T2_STAKING);
+        stakingManager.liquidityProviderDeposit(T2_STAKING);
         assertEq(stakingManager.lpStakingRound(user1), 2);
 
         // Verify total staking
@@ -368,15 +414,18 @@ contract TestStakingManager is Test {
     }
 
     function testLiquidityProviderDeposit_RevertLowerAmount() public {
+        vm.prank(owner);
+        nodeManager.setInviter(user1, user2);
+
         vm.startPrank(user1);
         usdt.approve(address(stakingManager), T2_STAKING + T1_STAKING);
 
         // First deposit
-        stakingManager.liquidityProviderDeposit(address(0), T2_STAKING);
+        stakingManager.liquidityProviderDeposit(T2_STAKING);
 
         // Second deposit with lower amount should revert
         vm.expectRevert("StakingManager.liquidityProviderDeposit: amount should more than previous staking amount");
-        stakingManager.liquidityProviderDeposit(address(0), T1_STAKING);
+        stakingManager.liquidityProviderDeposit(T1_STAKING);
         vm.stopPrank();
     }
 
@@ -388,11 +437,18 @@ contract TestStakingManager is Test {
         users[1] = user2;
         users[2] = user3;
 
+        // Set inviters for all users
+        vm.startPrank(owner);
+        for (uint256 i = 0; i < users.length; i++) {
+            nodeManager.setInviter(users[i], owner);
+        }
+        vm.stopPrank();
+
         // Deposit T1 for all users
         for (uint256 i = 0; i < users.length; i++) {
             vm.startPrank(users[i]);
             usdt.approve(address(stakingManager), T1_STAKING);
-            stakingManager.liquidityProviderDeposit(address(0), T1_STAKING);
+            stakingManager.liquidityProviderDeposit(T1_STAKING);
             vm.stopPrank();
         }
 
@@ -406,10 +462,14 @@ contract TestStakingManager is Test {
     // ==================== Create Reward Tests ====================
 
     function testCreateLiquidityProviderReward_DailyNormal() public {
+        // Set inviter for user1
+        vm.prank(owner);
+        nodeManager.setInviter(user1, user2);
+
         // First, user needs to stake
         vm.startPrank(user1);
         usdt.approve(address(stakingManager), T1_STAKING);
-        stakingManager.liquidityProviderDeposit(address(0), T1_STAKING);
+        stakingManager.liquidityProviderDeposit(T1_STAKING);
         vm.stopPrank();
 
         uint256 rewardAmount = 10 * 10 ** 18;
@@ -427,9 +487,12 @@ contract TestStakingManager is Test {
     }
 
     function testCreateLiquidityProviderReward_DirectReferral() public {
+        vm.prank(owner);
+        nodeManager.setInviter(user1, user2);
+
         vm.startPrank(user1);
         usdt.approve(address(stakingManager), T1_STAKING);
-        stakingManager.liquidityProviderDeposit(address(0), T1_STAKING);
+        stakingManager.liquidityProviderDeposit(T1_STAKING);
         vm.stopPrank();
 
         uint256 rewardAmount = 5 * 10 ** 18;
@@ -443,9 +506,12 @@ contract TestStakingManager is Test {
     }
 
     function testCreateLiquidityProviderReward_TeamReferral() public {
+        vm.prank(owner);
+        nodeManager.setInviter(user1, user2);
+
         vm.startPrank(user1);
         usdt.approve(address(stakingManager), T1_STAKING);
-        stakingManager.liquidityProviderDeposit(address(0), T1_STAKING);
+        stakingManager.liquidityProviderDeposit(T1_STAKING);
         vm.stopPrank();
 
         uint256 rewardAmount = 8 * 10 ** 18;
@@ -459,9 +525,12 @@ contract TestStakingManager is Test {
     }
 
     function testCreateLiquidityProviderReward_FomoPool() public {
+        vm.prank(owner);
+        nodeManager.setInviter(user1, user2);
+
         vm.startPrank(user1);
         usdt.approve(address(stakingManager), T1_STAKING);
-        stakingManager.liquidityProviderDeposit(address(0), T1_STAKING);
+        stakingManager.liquidityProviderDeposit(T1_STAKING);
         vm.stopPrank();
 
         uint256 rewardAmount = 15 * 10 ** 18;
@@ -482,9 +551,12 @@ contract TestStakingManager is Test {
     }
 
     function testCreateLiquidityProviderReward_RevertZeroAmount() public {
+        vm.prank(owner);
+        nodeManager.setInviter(user1, user2);
+
         vm.startPrank(user1);
         usdt.approve(address(stakingManager), T1_STAKING);
-        stakingManager.liquidityProviderDeposit(address(0), T1_STAKING);
+        stakingManager.liquidityProviderDeposit(T1_STAKING);
         vm.stopPrank();
 
         vm.startPrank(operatorManager);
@@ -494,9 +566,12 @@ contract TestStakingManager is Test {
     }
 
     function testCreateLiquidityProviderReward_RevertInvalidRewardType() public {
+        vm.prank(owner);
+        nodeManager.setInviter(user1, user2);
+
         vm.startPrank(user1);
         usdt.approve(address(stakingManager), T1_STAKING);
-        stakingManager.liquidityProviderDeposit(address(0), T1_STAKING);
+        stakingManager.liquidityProviderDeposit(T1_STAKING);
         vm.stopPrank();
 
         vm.startPrank(operatorManager);
@@ -506,9 +581,12 @@ contract TestStakingManager is Test {
     }
 
     function testCreateLiquidityProviderReward_RevertOnlyOperator() public {
+        vm.prank(owner);
+        nodeManager.setInviter(user1, user2);
+
         vm.startPrank(user1);
         usdt.approve(address(stakingManager), T1_STAKING);
-        stakingManager.liquidityProviderDeposit(address(0), T1_STAKING);
+        stakingManager.liquidityProviderDeposit(T1_STAKING);
 
         vm.expectRevert("onlyRewardDistributionManager");
         stakingManager.createLiquidityProviderReward(user1, 10 * 10 ** 18, 0);
@@ -516,9 +594,12 @@ contract TestStakingManager is Test {
     }
 
     function testCreateLiquidityProviderReward_TeamOutOfReward() public {
+        vm.prank(owner);
+        nodeManager.setInviter(user1, user2);
+
         vm.startPrank(user1);
         usdt.approve(address(stakingManager), T1_STAKING);
-        stakingManager.liquidityProviderDeposit(address(0), T1_STAKING);
+        stakingManager.liquidityProviderDeposit(T1_STAKING);
         vm.stopPrank();
 
         // Set quote rate so that reward exceeds 3x staking
@@ -541,9 +622,12 @@ contract TestStakingManager is Test {
     }
 
     function testCreateLiquidityProviderReward_RevertTeamOutOfReward() public {
+        vm.prank(owner);
+        nodeManager.setInviter(user1, user2);
+
         vm.startPrank(user1);
         usdt.approve(address(stakingManager), T1_STAKING);
-        stakingManager.liquidityProviderDeposit(address(0), T1_STAKING);
+        stakingManager.liquidityProviderDeposit(T1_STAKING);
         vm.stopPrank();
 
         // Set quote rate and trigger out of reward
@@ -563,9 +647,12 @@ contract TestStakingManager is Test {
     // ==================== Liquidity Provider Round Staking Over Tests ====================
 
     function testLiquidityProviderRoundStakingOver() public {
+        vm.prank(owner);
+        nodeManager.setInviter(user1, user2);
+
         vm.startPrank(user1);
         usdt.approve(address(stakingManager), T1_STAKING);
-        stakingManager.liquidityProviderDeposit(address(0), T1_STAKING);
+        stakingManager.liquidityProviderDeposit(T1_STAKING);
         vm.stopPrank();
 
         // Fast forward time past staking period (172800 seconds)
@@ -590,9 +677,12 @@ contract TestStakingManager is Test {
     }
 
     function testLiquidityProviderRoundStakingOver_RevertUnderStakingPeriod() public {
+        vm.prank(owner);
+        nodeManager.setInviter(user1, user2);
+
         vm.startPrank(user1);
         usdt.approve(address(stakingManager), T1_STAKING);
-        stakingManager.liquidityProviderDeposit(address(0), T1_STAKING);
+        stakingManager.liquidityProviderDeposit(T1_STAKING);
         vm.stopPrank();
 
         vm.startPrank(operatorManager);
@@ -602,9 +692,12 @@ contract TestStakingManager is Test {
     }
 
     function testLiquidityProviderRoundStakingOver_RevertOnlyOperator() public {
+        vm.prank(owner);
+        nodeManager.setInviter(user1, user2);
+
         vm.startPrank(user1);
         usdt.approve(address(stakingManager), T1_STAKING);
-        stakingManager.liquidityProviderDeposit(address(0), T1_STAKING);
+        stakingManager.liquidityProviderDeposit(T1_STAKING);
 
         vm.warp(block.timestamp + 172801);
 
@@ -616,10 +709,14 @@ contract TestStakingManager is Test {
     // ==================== Liquidity Provider Claim Reward Tests ====================
 
     function testLiquidityProviderClaimReward() public {
+        // Set inviter for user1
+        vm.prank(owner);
+        nodeManager.setInviter(user1, user2);
+
         // Setup: stake and create reward
         vm.startPrank(user1);
         usdt.approve(address(stakingManager), T1_STAKING);
-        stakingManager.liquidityProviderDeposit(address(0), T1_STAKING);
+        stakingManager.liquidityProviderDeposit(T1_STAKING);
         vm.stopPrank();
 
         uint256 rewardAmount = 100 * 10 ** 18;
@@ -647,9 +744,12 @@ contract TestStakingManager is Test {
     }
 
     function testLiquidityProviderClaimReward_RevertZeroAmount() public {
+        vm.prank(owner);
+        nodeManager.setInviter(user1, user2);
+
         vm.startPrank(user1);
         usdt.approve(address(stakingManager), T1_STAKING);
-        stakingManager.liquidityProviderDeposit(address(0), T1_STAKING);
+        stakingManager.liquidityProviderDeposit(T1_STAKING);
 
         vm.expectRevert("StakingManager.liquidityProviderClaimReward: reward amount must more than zero");
         stakingManager.liquidityProviderClaimReward(0);
@@ -657,9 +757,12 @@ contract TestStakingManager is Test {
     }
 
     function testLiquidityProviderClaimReward_RevertExceedReward() public {
+        vm.prank(owner);
+        nodeManager.setInviter(user1, user2);
+
         vm.startPrank(user1);
         usdt.approve(address(stakingManager), T1_STAKING);
-        stakingManager.liquidityProviderDeposit(address(0), T1_STAKING);
+        stakingManager.liquidityProviderDeposit(T1_STAKING);
         vm.stopPrank();
 
         vm.startPrank(operatorManager);
@@ -673,9 +776,12 @@ contract TestStakingManager is Test {
     }
 
     function testLiquidityProviderClaimReward_MultipleClaims() public {
+        vm.prank(owner);
+        nodeManager.setInviter(user1, user2);
+
         vm.startPrank(user1);
         usdt.approve(address(stakingManager), T1_STAKING);
-        stakingManager.liquidityProviderDeposit(address(0), T1_STAKING);
+        stakingManager.liquidityProviderDeposit(T1_STAKING);
         vm.stopPrank();
 
         vm.startPrank(operatorManager);
@@ -719,10 +825,17 @@ contract TestStakingManager is Test {
         users[1] = user2;
         users[2] = user3;
 
+        // Set inviters for all users
+        vm.startPrank(owner);
+        for (uint256 i = 0; i < users.length; i++) {
+            nodeManager.setInviter(users[i], owner);
+        }
+        vm.stopPrank();
+
         for (uint256 i = 0; i < users.length; i++) {
             vm.startPrank(users[i]);
             usdt.approve(address(stakingManager), T1_STAKING);
-            stakingManager.liquidityProviderDeposit(address(0), T1_STAKING);
+            stakingManager.liquidityProviderDeposit(T1_STAKING);
             vm.stopPrank();
         }
 
@@ -734,26 +847,36 @@ contract TestStakingManager is Test {
     }
 
     function testComplexInvitationChain() public {
+        // Set up invitation chain: user2 <- user1 <- user3
+        vm.startPrank(owner);
+        nodeManager.setInviter(user1, user2);
+        nodeManager.setInviter(user3, user1);
+        vm.stopPrank();
+
         // user2 invites user1
         vm.startPrank(user1);
         usdt.approve(address(stakingManager), T1_STAKING);
-        stakingManager.liquidityProviderDeposit(user2, T1_STAKING);
+        stakingManager.liquidityProviderDeposit(T1_STAKING);
         vm.stopPrank();
 
         // user1 invites user3
         vm.startPrank(user3);
         usdt.approve(address(stakingManager), T1_STAKING);
-        stakingManager.liquidityProviderDeposit(user1, T1_STAKING);
+        stakingManager.liquidityProviderDeposit(T1_STAKING);
         vm.stopPrank();
 
-        assertEq(stakingManager.inviteRelationShip(user1), user2);
-        assertEq(stakingManager.inviteRelationShip(user3), user1);
+        assertEq(nodeManager.inviters(user1), user2);
+        assertEq(nodeManager.inviters(user3), user1);
     }
 
     function testAllRewardTypes() public {
+        // Set inviter for user1
+        vm.prank(owner);
+        nodeManager.setInviter(user1, user2);
+
         vm.startPrank(user1);
         usdt.approve(address(stakingManager), T1_STAKING);
-        stakingManager.liquidityProviderDeposit(address(0), T1_STAKING);
+        stakingManager.liquidityProviderDeposit(T1_STAKING);
         vm.stopPrank();
 
         vm.startPrank(operatorManager);

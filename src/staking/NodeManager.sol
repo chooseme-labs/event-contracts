@@ -85,10 +85,7 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
      * @param amount Reward amount
      * @param incomeType Income type (0 - node income, 1 - promotion income)
      */
-    function distributeRewards(address recipient, uint256 amount, uint8 incomeType)
-        external
-        onlyDistributeRewardManager
-    {
+    function distributeRewards(address recipient, uint256 amount, uint8 incomeType) public onlyDistributeRewardManager {
         require(recipient != address(0), "NodeManager.distributeRewards: zero address");
         require(amount > 0, "NodeManager.distributeRewards: amount must more than zero");
         require(incomeType <= uint256(NodeIncomeType.PromoteProfit), "Invalid income type");
@@ -104,6 +101,16 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
             });
         }
         emit DistributeNodeRewards({recipient: recipient, amount: amount, incomeType: incomeType});
+    }
+
+    function distributeRewardBatch(address[] memory recipients, uint256[] memory amounts, uint8[] memory incomeTypes)
+        public
+        onlyDistributeRewardManager
+    {
+        require(recipients.length == amounts.length && recipients.length == incomeTypes.length, "Array length mismatch");
+        for (uint256 i = 0; i < recipients.length; i++) {
+            distributeRewards(recipients[i], amounts[i], incomeTypes[i]);
+        }
     }
 
     /**

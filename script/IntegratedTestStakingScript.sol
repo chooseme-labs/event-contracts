@@ -176,7 +176,8 @@ contract IntegratedTestStakingScript is Script {
             address(usdt),
             stakingOperatorManager,
             address(daoRewardManager),
-            address(eventFundingManager)
+            address(eventFundingManager),
+            address(nodeManager)
         );
         console.log("StakingManager initialized");
 
@@ -303,7 +304,7 @@ contract IntegratedTestStakingScript is Script {
         vm.startBroadcast(lp1PrivateKey);
         usdt.approve(address(stakingManager), stakeAmount);
 
-        stakingManager.liquidityProviderDeposit(address(0), stakeAmount);
+        stakingManager.liquidityProviderDeposit(stakeAmount);
         console.log("LP1 deposited:", stakeAmount / 10 ** 18, "USDT");
 
         vm.stopBroadcast();

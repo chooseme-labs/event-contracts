@@ -136,7 +136,7 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
      * @param incomeType Income type (0 - daily normal reward, 1 - direct referral reward, 2 - team reward, 3 - FOMO pool reward)
      */
     function createLiquidityProviderReward(address lpAddress, uint256 amount, uint8 incomeType)
-        external
+        public
         onlyStakingOperatorManager
     {
         require(lpAddress != address(0), "StakingManager.createLiquidityProviderReward: zero address");
@@ -164,6 +164,20 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
         emit LiquidityProviderRewards({
             liquidityProvider: lpAddress, amount: amount, rewardBlock: block.number, incomeType: incomeType
         });
+    }
+
+    function createLiquidityProviderRewardBatch(
+        address[] memory lpAddresses,
+        uint256[] memory amounts,
+        uint8[] memory incomeTypes
+    ) public onlyStakingOperatorManager {
+        require(
+            lpAddresses.length == amounts.length && lpAddresses.length == incomeTypes.length, "Array length mismatch"
+        );
+
+        for (uint256 i = 0; i < lpAddresses.length; i++) {
+            createLiquidityProviderReward(lpAddresses[i], amounts[i], incomeTypes[i]);
+        }
     }
 
     /**

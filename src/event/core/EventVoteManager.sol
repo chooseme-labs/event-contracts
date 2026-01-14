@@ -22,7 +22,7 @@ contract EventVoteManager is
     constructor() {
         _disableInitializers();
     }
-    
+
     modifier onlyCaller() {
         require(msg.sender == caller, "EventVoteManager: caller only");
         _;
@@ -41,29 +41,16 @@ contract EventVoteManager is
      * @param eventId The event ID to vote on
      * @param pod The EventVotePod contract address
      * @param votingPeriod The voting period in seconds
-     * @param minTokenBalance The minimum token balance required to vote
-     * @return voteId The created vote ID
      */
-    function createVote(
-        uint256 eventId,
-        address pod,
-        uint256 votingPeriod,
-        uint256 minTokenBalance
-    ) external onlyCaller onlyPod(pod) whenNotPaused returns (uint256 voteId) {
-        if (!isPod(pod)) {
-            revert EventVoteManager__InvalidPod();
-        }
-
+    function createVote(uint256 eventId, address pod, uint256 votingPeriod)
+        external
+        onlyCaller
+        onlyPod(pod)
+        whenNotPaused
+    {
         // Call pod to initialize vote
-        voteId = IEventVotePod(pod).initializeVote(
-            eventId,
-            votingPeriod,
-            minTokenBalance
-        );
-
+        uint256 voteId = IEventVotePod(pod).initializeVote(eventId, votingPeriod);
         emit VoteCreated(eventId, pod, voteId);
-
-        return voteId;
     }
 
     /**
@@ -72,17 +59,11 @@ contract EventVoteManager is
      * @param voteId The vote ID
      * @param approved Whether the vote was approved
      */
-    function completeVote(address pod, uint256 voteId, bool approved) external onlyCaller whenNotPaused {
-        if (!isPod(pod)) {
-            revert EventVoteManager__InvalidPod();
-        }
-        
+    function completeVote(address pod, uint256 voteId, bool approved) external onlyCaller onlyPod(pod) whenNotPaused {
         // Call pod to complete vote
         IEventVotePod(pod).completeVote(voteId, approved);
-        
         // Get vote details from pod
         IEventVotePod.Vote memory voteData = IEventVotePod(pod).getVoteDetails(voteId);
-        
         if (voteData.voteId == 0) {
             revert EventVoteManager__VoteNotExist();
         }
@@ -102,11 +83,7 @@ contract EventVoteManager is
      * @param voteId The vote ID
      * @return Vote details
      */
-    function getVoteInfo(address pod, uint256 voteId)
-        external
-        view
-        returns (IEventVotePod.Vote memory)
-    {
+    function getVoteInfo(address pod, uint256 voteId) external view returns (IEventVotePod.Vote memory) {
         return IEventVotePod(pod).getVoteDetails(voteId);
     }
 
@@ -117,7 +94,7 @@ contract EventVoteManager is
     function setEventManager(address _eventManager) external onlyOwner {
         eventManager = _eventManager;
     }
-    
+
     /**
      * @dev Set caller address
      * @param _caller New caller address

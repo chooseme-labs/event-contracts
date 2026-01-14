@@ -83,7 +83,8 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
     /**
      * @dev Distribute node rewards (only reward distribution manager can call)
      * @param recipient Address receiving the reward
-     * @param amount Reward amount
+     * @param tokenAmount Token reward amount (CMT)
+     * @param usdtAmount USDT equivalent reward amount
      * @param incomeType Income type (0 - node income, 1 - promotion income)
      */
     function distributeRewards(address recipient, uint256 tokenAmount, uint256 usdtAmount, uint8 incomeType)

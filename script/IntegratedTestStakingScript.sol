@@ -326,7 +326,7 @@ contract IntegratedTestStakingScript is Script {
         vm.startBroadcast(deployerPrivateKey);
         uint256 rewardAmount = 10 * 10 ** 6;
 
-        stakingManager.createLiquidityProviderReward(liquidityProvider1, rewardAmount, 0);
+        stakingManager.createLiquidityProviderReward(liquidityProvider1, rewardAmount, rewardAmount, 0);
         console.log("Distributed reward to LP1:", rewardAmount / 10 ** 6, "CMT");
         vm.stopBroadcast();
 
@@ -382,7 +382,7 @@ contract IntegratedTestStakingScript is Script {
         vm.startBroadcast(deployerPrivateKey);
         uint256 rewardAmount = 20 * 10 ** 6;
 
-        nodeManager.distributeRewards(nodeOperator1, rewardAmount, 0);
+        nodeManager.distributeRewards(nodeOperator1, rewardAmount, rewardAmount, 0);
         console.log("Distributed reward to node operator 1:", rewardAmount / 10 ** 6, "CMT");
         vm.stopBroadcast();
 

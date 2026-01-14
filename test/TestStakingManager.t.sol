@@ -205,7 +205,11 @@ contract TestStakingManager is Test {
     );
 
     event LiquidityProviderRewards(
-        address indexed liquidityProvider, uint256 amount, uint256 rewardBlock, uint8 incomeType
+        address indexed liquidityProvider,
+        uint256 tokenAmount,
+        uint256 usdtAmount,
+        uint256 rewardBlock,
+        uint8 incomeType
     );
 
     event lpClaimReward(address indexed liquidityProvider, uint256 withdrawAmount, uint256 toPredictionAmount);
@@ -329,7 +333,7 @@ contract TestStakingManager is Test {
         assertEq(stakingStatus, 0);
 
         // Verify total staking reward
-        (address lpAddr, uint256 totalStaking, uint256 totalReward,,,,,) = stakingManager.totalLpStakingReward(user1);
+        (address lpAddr, uint256 totalStaking, uint256 totalReward,,,,,,) = stakingManager.totalLpStakingReward(user1);
         assertEq(lpAddr, user1);
         assertEq(totalStaking, T1_STAKING);
         assertEq(totalReward, 0);
@@ -435,7 +439,7 @@ contract TestStakingManager is Test {
         assertEq(stakingManager.lpStakingRound(user1), 2);
 
         // Verify total staking
-        (, uint256 totalStaking,,,,,,) = stakingManager.totalLpStakingReward(user1);
+        (, uint256 totalStaking,,,,,,,) = stakingManager.totalLpStakingReward(user1);
         assertEq(totalStaking, T1_STAKING + T2_STAKING);
         vm.stopPrank();
     }
@@ -503,12 +507,12 @@ contract TestStakingManager is Test {
 
         vm.startPrank(operatorManager);
         vm.expectEmit(true, false, false, true);
-        emit LiquidityProviderRewards(user1, rewardAmount, block.number, 0);
+        emit LiquidityProviderRewards(user1, rewardAmount, rewardAmount, block.number, 0);
 
-        stakingManager.createLiquidityProviderReward(user1, rewardAmount, 0);
+        stakingManager.createLiquidityProviderReward(user1, rewardAmount, rewardAmount, 0);
         vm.stopPrank();
 
-        (,, uint256 totalReward,, uint256 dailyNormalReward,,,) = stakingManager.totalLpStakingReward(user1);
+        (,, uint256 totalReward,,, uint256 dailyNormalReward,,,) = stakingManager.totalLpStakingReward(user1);
         assertEq(totalReward, rewardAmount);
         assertEq(dailyNormalReward, rewardAmount);
     }
@@ -525,10 +529,10 @@ contract TestStakingManager is Test {
         uint256 rewardAmount = 5 * 10 ** 18;
 
         vm.startPrank(operatorManager);
-        stakingManager.createLiquidityProviderReward(user1, rewardAmount, 1);
+        stakingManager.createLiquidityProviderReward(user1, rewardAmount, rewardAmount, 1);
         vm.stopPrank();
 
-        (,,,,, uint256 directReferralReward,,) = stakingManager.totalLpStakingReward(user1);
+        (,,,,,, uint256 directReferralReward,,) = stakingManager.totalLpStakingReward(user1);
         assertEq(directReferralReward, rewardAmount);
     }
 
@@ -544,10 +548,10 @@ contract TestStakingManager is Test {
         uint256 rewardAmount = 8 * 10 ** 18;
 
         vm.startPrank(operatorManager);
-        stakingManager.createLiquidityProviderReward(user1, rewardAmount, 2);
+        stakingManager.createLiquidityProviderReward(user1, rewardAmount, rewardAmount, 2);
         vm.stopPrank();
 
-        (,,,,,, uint256 teamReferralReward,) = stakingManager.totalLpStakingReward(user1);
+        (,,,,,,, uint256 teamReferralReward,) = stakingManager.totalLpStakingReward(user1);
         assertEq(teamReferralReward, rewardAmount);
     }
 
@@ -563,17 +567,17 @@ contract TestStakingManager is Test {
         uint256 rewardAmount = 15 * 10 ** 18;
 
         vm.startPrank(operatorManager);
-        stakingManager.createLiquidityProviderReward(user1, rewardAmount, 3);
+        stakingManager.createLiquidityProviderReward(user1, rewardAmount, rewardAmount, 3);
         vm.stopPrank();
 
-        (,,,,,,, uint256 fomoPoolReward) = stakingManager.totalLpStakingReward(user1);
+        (,,,,,,,, uint256 fomoPoolReward) = stakingManager.totalLpStakingReward(user1);
         assertEq(fomoPoolReward, rewardAmount);
     }
 
     function testCreateLiquidityProviderReward_RevertZeroAddress() public {
         vm.startPrank(operatorManager);
         vm.expectRevert("StakingManager.createLiquidityProviderReward: zero address");
-        stakingManager.createLiquidityProviderReward(address(0), 10 * 10 ** 18, 0);
+        stakingManager.createLiquidityProviderReward(address(0), 10 * 10 ** 18, 10 * 10 ** 18, 0);
         vm.stopPrank();
     }
 
@@ -588,7 +592,7 @@ contract TestStakingManager is Test {
 
         vm.startPrank(operatorManager);
         vm.expectRevert("StakingManager.createLiquidityProviderReward: amount should more than zero");
-        stakingManager.createLiquidityProviderReward(user1, 0, 0);
+        stakingManager.createLiquidityProviderReward(user1, 0, 0, 0);
         vm.stopPrank();
     }
 
@@ -603,7 +607,7 @@ contract TestStakingManager is Test {
 
         vm.startPrank(operatorManager);
         vm.expectRevert(abi.encodeWithSelector(IStakingManager.InvalidRewardTypeError.selector, uint8(4)));
-        stakingManager.createLiquidityProviderReward(user1, 10 * 10 ** 18, 4);
+        stakingManager.createLiquidityProviderReward(user1, 10 * 10 ** 18, 10 * 10 ** 18, 4);
         vm.stopPrank();
     }
 
@@ -616,7 +620,7 @@ contract TestStakingManager is Test {
         stakingManager.liquidityProviderDeposit(T1_STAKING);
 
         vm.expectRevert("onlyRewardDistributionManager");
-        stakingManager.createLiquidityProviderReward(user1, 10 * 10 ** 18, 0);
+        stakingManager.createLiquidityProviderReward(user1, 10 * 10 ** 18, 10 * 10 ** 18, 0);
         vm.stopPrank();
     }
 
@@ -636,12 +640,13 @@ contract TestStakingManager is Test {
 
         // Create reward that will trigger 3x limit (200 * 3 = 600 USDT)
         uint256 rewardAmount = 70 * 10 ** 18; // 70 CMT = 700 USDT at 10:1
+        uint256 expectedCappedReward = 60 * 10 ** 18; // 60 CMT = 600 USDT (capped at 3x staking)
 
         vm.startPrank(operatorManager);
         vm.expectEmit(true, false, false, true);
-        emit outOfAchieveReturnsNodeExit(user1, rewardAmount, block.number);
+        emit outOfAchieveReturnsNodeExit(user1, expectedCappedReward, block.number);
 
-        stakingManager.createLiquidityProviderReward(user1, rewardAmount, 0);
+        stakingManager.createLiquidityProviderReward(user1, rewardAmount, rewardAmount * 10, 0);
 
         // Verify team is marked as out of reward
         assertTrue(stakingManager.teamOutOfReward(user1));
@@ -663,11 +668,11 @@ contract TestStakingManager is Test {
         vm.stopPrank();
 
         vm.startPrank(operatorManager);
-        stakingManager.createLiquidityProviderReward(user1, 70 * 10 ** 18, 0);
+        stakingManager.createLiquidityProviderReward(user1, 70 * 10 ** 18, 700 * 10 ** 18, 0);
 
         // Try to create another reward - should revert
         vm.expectRevert("StakingManager.createLiquidityProviderReward: team out of reward");
-        stakingManager.createLiquidityProviderReward(user1, 10 * 10 ** 18, 0);
+        stakingManager.createLiquidityProviderReward(user1, 10 * 10 ** 18, 100 * 10 ** 18, 0);
         vm.stopPrank();
     }
 
@@ -749,7 +754,7 @@ contract TestStakingManager is Test {
         uint256 rewardAmount = 100 * 10 ** 18;
 
         vm.startPrank(operatorManager);
-        stakingManager.createLiquidityProviderReward(user1, rewardAmount, 0);
+        stakingManager.createLiquidityProviderReward(user1, rewardAmount, rewardAmount, 0);
         vm.stopPrank();
 
         uint256 balanceBefore = cmt.balanceOf(user1);
@@ -766,7 +771,7 @@ contract TestStakingManager is Test {
         uint256 balanceAfter = cmt.balanceOf(user1);
         assertEq(balanceAfter - balanceBefore, 40 * 10 ** 18); // 80% of claim amount
 
-        (,,, uint256 claimedReward,,,,) = stakingManager.totalLpStakingReward(user1);
+        (,,,, uint256 claimedReward,,,,) = stakingManager.totalLpStakingReward(user1);
         assertEq(claimedReward, claimAmount);
     }
 
@@ -793,7 +798,7 @@ contract TestStakingManager is Test {
         vm.stopPrank();
 
         vm.startPrank(operatorManager);
-        stakingManager.createLiquidityProviderReward(user1, 50 * 10 ** 18, 0);
+        stakingManager.createLiquidityProviderReward(user1, 50 * 10 ** 18, 50 * 10 ** 18, 0);
         vm.stopPrank();
 
         vm.startPrank(user1);
@@ -812,7 +817,7 @@ contract TestStakingManager is Test {
         vm.stopPrank();
 
         vm.startPrank(operatorManager);
-        stakingManager.createLiquidityProviderReward(user1, 100 * 10 ** 18, 0);
+        stakingManager.createLiquidityProviderReward(user1, 100 * 10 ** 18, 100 * 10 ** 18, 0);
         vm.stopPrank();
 
         vm.startPrank(user1);
@@ -820,7 +825,7 @@ contract TestStakingManager is Test {
         stakingManager.liquidityProviderClaimReward(50 * 10 ** 18);
         vm.stopPrank();
 
-        (,,, uint256 claimedReward1,,,,) = stakingManager.totalLpStakingReward(user1);
+        (,,,, uint256 claimedReward1,,,,) = stakingManager.totalLpStakingReward(user1);
         assertEq(claimedReward1, 80 * 10 ** 18);
 
         // Should only be able to claim remaining 20
@@ -828,7 +833,7 @@ contract TestStakingManager is Test {
         stakingManager.liquidityProviderClaimReward(20 * 10 ** 18);
         vm.stopPrank();
 
-        (,,, uint256 claimedReward2,,,,) = stakingManager.totalLpStakingReward(user1);
+        (,,,, uint256 claimedReward2,,,,) = stakingManager.totalLpStakingReward(user1);
         assertEq(claimedReward2, 100 * 10 ** 18);
     }
 
@@ -868,7 +873,7 @@ contract TestStakingManager is Test {
 
         // Verify all users are staked
         for (uint256 i = 0; i < users.length; i++) {
-            (, uint256 totalStaking,,,,,,) = stakingManager.totalLpStakingReward(users[i]);
+            (, uint256 totalStaking,,,,,,,) = stakingManager.totalLpStakingReward(users[i]);
             assertEq(totalStaking, T1_STAKING);
         }
     }
@@ -907,15 +912,15 @@ contract TestStakingManager is Test {
         vm.stopPrank();
 
         vm.startPrank(operatorManager);
-        stakingManager.createLiquidityProviderReward(user1, 10 * 10 ** 18, 0); // Daily
-        stakingManager.createLiquidityProviderReward(user1, 5 * 10 ** 18, 1); // Direct
-        stakingManager.createLiquidityProviderReward(user1, 8 * 10 ** 18, 2); // Team
-        stakingManager.createLiquidityProviderReward(user1, 7 * 10 ** 18, 3); // FOMO
+        stakingManager.createLiquidityProviderReward(user1, 10 * 10 ** 18, 10 * 10 ** 18, 0); // Daily
+        stakingManager.createLiquidityProviderReward(user1, 5 * 10 ** 18, 5 * 10 ** 18, 1); // Direct
+        stakingManager.createLiquidityProviderReward(user1, 8 * 10 ** 18, 8 * 10 ** 18, 2); // Team
+        stakingManager.createLiquidityProviderReward(user1, 7 * 10 ** 18, 7 * 10 ** 18, 3); // FOMO
         vm.stopPrank();
 
         (
             ,,
-            uint256 totalReward,,
+            uint256 totalReward,,,
             uint256 dailyNormalReward,
             uint256 directReferralReward,
             uint256 teamReferralReward,

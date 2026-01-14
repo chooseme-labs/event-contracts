@@ -76,13 +76,13 @@ contract BroadcastStakingScript is Script {
 
         // initChooseMeToken();
         // transferGasFee(initPoolPrivateKey);
-        // transfer();
+        transfer();
         // addLiquidity();
 
-        distributeNodeRewards(deployerPrivateKey, 0x7f345497612FbA3DFb923b422D67108BB5894EA6, 1000 * cmtDecimals, 0);
-        createLiquidityProviderReward(
-            deployerPrivateKey, 0x7f345497612FbA3DFb923b422D67108BB5894EA6, 1000 * cmtDecimals, 0
-        );
+        // distributeNodeRewards(deployerPrivateKey, 0x7f345497612FbA3DFb923b422D67108BB5894EA6, 1000 * cmtDecimals, 0);
+        // createLiquidityProviderReward(
+        //     deployerPrivateKey, 0x7f345497612FbA3DFb923b422D67108BB5894EA6, 1000 * cmtDecimals, 0
+        // );
     }
 
     function initContracts() internal {
@@ -174,14 +174,18 @@ contract BroadcastStakingScript is Script {
 
     function transfer() internal {
         vm.startBroadcast(initPoolPrivateKey);
-        usdt.transfer(0xD837FF8cb366D1f9ebDB0659b066b709804D52bc, 100000 * usdtDecimals);
-        chooseMeToken.transfer(0xD837FF8cb366D1f9ebDB0659b066b709804D52bc, 100000 * cmtDecimals);
+        // usdt.transfer(0xD837FF8cb366D1f9ebDB0659b066b709804D52bc, 100000 * usdtDecimals);
+        // chooseMeToken.transfer(0xD837FF8cb366D1f9ebDB0659b066b709804D52bc, 100000 * cmtDecimals);
 
-        usdt.transfer(0x7f345497612FbA3DFb923b422D67108BB5894EA6, 100000 * usdtDecimals);
-        chooseMeToken.transfer(0x7f345497612FbA3DFb923b422D67108BB5894EA6, 100000 * cmtDecimals);
+        // usdt.transfer(0x7f345497612FbA3DFb923b422D67108BB5894EA6, 100000 * usdtDecimals);
+        // chooseMeToken.transfer(0x7f345497612FbA3DFb923b422D67108BB5894EA6, 100000 * cmtDecimals);
 
-        usdt.transfer(0xcCA370146cabEb663a277c80db355aAf749fa3eb, 100000 * usdtDecimals);
-        chooseMeToken.transfer(0xcCA370146cabEb663a277c80db355aAf749fa3eb, 100000 * cmtDecimals);
+        // usdt.transfer(0xcCA370146cabEb663a277c80db355aAf749fa3eb, 100000 * usdtDecimals);
+        // chooseMeToken.transfer(0xcCA370146cabEb663a277c80db355aAf749fa3eb, 100000 * cmtDecimals);
+
+        usdt.transfer(0x3BE8e7EA327b3DC9A39BD2B9247b21836a78b2aE, 100000 * usdtDecimals);
+        chooseMeToken.transfer(0x3BE8e7EA327b3DC9A39BD2B9247b21836a78b2aE, 100000 * cmtDecimals);
+
         vm.stopBroadcast();
     }
 
@@ -294,23 +298,25 @@ contract BroadcastStakingScript is Script {
      * @dev 分发节点奖励
      * @param operatorPrivateKey 操作员私钥（需要有 distributeRewardManager 权限）
      * @param recipient 接收者地址
-     * @param rewardAmount 奖励金额（CMT）
+     * @param tokenAmount 奖励金额（CMT）
+     * @param usdtAmount 奖励金额（USDT）
      * @param incomeType 收益类型（0 - 节点收益, 1 - 推广收益）
      */
     function distributeNodeRewards(
         uint256 operatorPrivateKey,
         address recipient,
-        uint256 rewardAmount,
+        uint256 tokenAmount,
+        uint256 usdtAmount,
         uint8 incomeType
     ) internal {
         console.log("--- Distribute Node Rewards Test ---");
         console.log("Recipient:", recipient);
-        console.log("Reward Amount:", rewardAmount / cmtDecimals, "CMT");
+        console.log("Reward Amount:", tokenAmount / cmtDecimals, "CMT");
         console.log("Income Type:", incomeType);
 
         vm.startBroadcast(operatorPrivateKey);
 
-        nodeManager.distributeRewards(recipient, rewardAmount, incomeType);
+        nodeManager.distributeRewards(recipient, tokenAmount, usdtAmount, incomeType);
         console.log("Rewards distributed successfully");
 
         vm.stopBroadcast();
@@ -426,7 +432,7 @@ contract BroadcastStakingScript is Script {
 
         vm.startBroadcast(operatorPrivateKey);
 
-        stakingManager.createLiquidityProviderReward(lpAddress, rewardAmount, incomeType);
+        stakingManager.createLiquidityProviderReward(lpAddress, rewardAmount, rewardAmount, incomeType);
         console.log("Liquidity provider reward created successfully");
 
         vm.stopBroadcast();

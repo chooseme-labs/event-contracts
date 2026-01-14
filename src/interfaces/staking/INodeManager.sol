@@ -57,7 +57,7 @@ interface INodeManager {
     error HaveAlreadyBuyNode(address buyer);
 
     function purchaseNode(uint256 amount) external;
-    function distributeRewards(address recipient, uint256 amount, uint8 incomeType) external;
+    function distributeRewards(address recipient, uint256 tokenAmount, uint256 usdtAmount, uint8 incomeType) external;
     function distributeRewardBatch(BatchReward[] memory batchRewards) external;
     function claimReward(uint256 amount) external;
     function addLiquidity(uint256 amount) external;

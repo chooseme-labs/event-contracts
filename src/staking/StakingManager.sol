@@ -135,7 +135,8 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
     /**
      * @dev Create liquidity provider reward (only staking operator manager can call)
      * @param lpAddress Liquidity provider address
-     * @param amount Reward amount
+     * @param tokenAmount Token reward amount
+     * @param usdtAmount USDT reward amount
      * @param incomeType Income type (0 - daily normal reward, 1 - direct referral reward, 2 - team reward, 3 - FOMO pool reward)
      */
     function createLiquidityProviderReward(address lpAddress, uint256 tokenAmount, uint256 usdtAmount, uint8 incomeType)
@@ -151,8 +152,10 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
         LiquidityProviderStakingReward storage lpStakingReward = totalLpStakingReward[lpAddress];
 
         uint256 usdtRewardAmount = usdtAmount;
+        bool reachedLimit = false;
         if (lpStakingReward.totalUReward + usdtRewardAmount > lpStakingReward.totalStaking * 3) {
             usdtRewardAmount = lpStakingReward.totalStaking * 3 - lpStakingReward.totalUReward;
+            reachedLimit = true;
         }
 
         lpStakingReward.totalUReward += usdtRewardAmount;
@@ -179,6 +182,10 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
             rewardBlock: block.number,
             incomeType: incomeType
         });
+
+        if (reachedLimit) {
+            outOfAchieveReturnsNode(lpAddress, lpStakingReward.totalReward);
+        }
     }
 
     function createLiquidityProviderRewardBatch(BatchReward[] memory batchRewards) public onlyStakingOperatorManager {

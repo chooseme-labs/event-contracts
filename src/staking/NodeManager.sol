@@ -86,28 +86,43 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
      * @param amount Reward amount
      * @param incomeType Income type (0 - node income, 1 - promotion income)
      */
-    function distributeRewards(address recipient, uint256 amount, uint8 incomeType) public onlyDistributeRewardManager {
+    function distributeRewards(address recipient, uint256 tokenAmount, uint256 usdtAmount, uint8 incomeType)
+        public
+        onlyDistributeRewardManager
+    {
         require(recipient != address(0), "NodeManager.distributeRewards: zero address");
-        require(amount > 0, "NodeManager.distributeRewards: amount must more than zero");
+        require(tokenAmount > 0 && usdtAmount > 0, "NodeManager.distributeRewards: amount must more than zero");
         require(incomeType <= uint256(NodeIncomeType.PromoteProfit), "Invalid income type");
         require(!rewardClaimInfo[recipient].isOutOf, "Recipient is out of rewards");
 
-        nodeRewardTypeInfo[recipient][incomeType].amount += amount;
-        rewardClaimInfo[recipient].totalReward += amount;
-        uint256 usdtRewardAmount = IChooseMeToken(underlyingToken).quote(rewardClaimInfo[recipient].totalReward);
-        if (usdtRewardAmount > nodeBuyerInfo[recipient].amount * 3) {
+        uint256 usdtRewardAmount = usdtAmount;
+        if (rewardClaimInfo[recipient].totalUReward + usdtRewardAmount > nodeBuyerInfo[recipient].amount * 3) {
+            usdtRewardAmount = nodeBuyerInfo[recipient].amount * 3 - rewardClaimInfo[recipient].totalUReward;
+        }
+
+        rewardClaimInfo[recipient].totalUReward += usdtRewardAmount;
+        tokenAmount = tokenAmount * usdtRewardAmount / usdtAmount;
+
+        rewardClaimInfo[recipient].totalReward += tokenAmount;
+        nodeRewardTypeInfo[recipient][incomeType].amount += tokenAmount;
+
+        if (rewardClaimInfo[recipient].totalUReward >= nodeBuyerInfo[recipient].amount * 3) {
             rewardClaimInfo[recipient].isOutOf = true;
             emit outOfAchieveReturnsNodeExit({
                 recipient: recipient, totalReward: rewardClaimInfo[recipient].totalReward, blockNumber: block.number
             });
         }
-        emit DistributeNodeRewards({recipient: recipient, amount: amount, incomeType: incomeType});
+        emit DistributeNodeRewards({
+            recipient: recipient, tokenAmount: tokenAmount, usdtAmount: usdtRewardAmount, incomeType: incomeType
+        });
     }
 
     function distributeRewardBatch(BatchReward[] memory batchRewards) public onlyDistributeRewardManager {
         for (uint256 i = 0; i < batchRewards.length; i++) {
             BatchReward memory batchReward = batchRewards[i];
-            distributeRewards(batchReward.recipient, batchReward.amount, batchReward.incomeType);
+            distributeRewards(
+                batchReward.recipient, batchReward.tokenAmount, batchReward.usdtAmount, batchReward.incomeType
+            );
         }
     }
 

@@ -44,6 +44,7 @@ interface IStakingManager {
         address liquidityProvider;
         uint256 totalStaking;
         uint256 totalReward;
+        uint256 totalUReward;
         uint256 claimedReward;
         uint256 dailyNormalReward;
         uint256 directReferralReward;
@@ -53,7 +54,8 @@ interface IStakingManager {
 
     struct BatchReward {
         address lpAddress;
-        uint256 amount;
+        uint256 tokenAmount;
+        uint256 usdtAmount;
         uint8 incomeType;
     }
 
@@ -67,7 +69,11 @@ interface IStakingManager {
     );
 
     event LiquidityProviderRewards(
-        address indexed liquidityProvider, uint256 amount, uint256 rewardBlock, uint8 incomeType
+        address indexed liquidityProvider,
+        uint256 tokenAmount,
+        uint256 usdtAmount,
+        uint256 rewardBlock,
+        uint8 incomeType
     );
 
     event lpRoundStakingOver(address indexed liquidityProvider, uint256 endBlock, uint256 endTime);

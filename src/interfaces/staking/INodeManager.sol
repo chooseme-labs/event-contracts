@@ -29,6 +29,7 @@ interface INodeManager {
 
     struct RewardClaimInfo {
         uint256 totalReward;
+        uint256 totalUReward;
         uint256 claimedReward;
         bool isOutOf;
     }
@@ -37,7 +38,8 @@ interface INodeManager {
 
     struct BatchReward {
         address recipient;
-        uint256 amount;
+        uint256 tokenAmount;
+        uint256 usdtAmount;
         uint8 incomeType;
     }
 
@@ -47,7 +49,7 @@ interface INodeManager {
 
     event PurchaseNodes(address indexed buyer, uint256 amount, uint8 nodeType);
 
-    event DistributeNodeRewards(address indexed recipient, uint256 amount, uint8 incomeType);
+    event DistributeNodeRewards(address indexed recipient, uint256 tokenAmount, uint256 usdtAmount, uint8 incomeType);
 
     event LiquidityAdded(uint256 liquidity, uint256 amount0, uint256 amount1);
 

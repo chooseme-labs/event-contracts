@@ -107,6 +107,7 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
                 liquidityProvider: msg.sender,
                 totalStaking: 0,
                 totalReward: 0,
+                totalUReward: 0,
                 claimedReward: 0,
                 dailyNormalReward: 0,
                 directReferralReward: 0,
@@ -137,40 +138,57 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
      * @param amount Reward amount
      * @param incomeType Income type (0 - daily normal reward, 1 - direct referral reward, 2 - team reward, 3 - FOMO pool reward)
      */
-    function createLiquidityProviderReward(address lpAddress, uint256 amount, uint8 incomeType)
+    function createLiquidityProviderReward(address lpAddress, uint256 tokenAmount, uint256 usdtAmount, uint8 incomeType)
         public
         onlyStakingOperatorManager
     {
         require(lpAddress != address(0), "StakingManager.createLiquidityProviderReward: zero address");
-        require(amount > 0, "StakingManager.createLiquidityProviderReward: amount should more than zero");
+        require(
+            tokenAmount > 0 && usdtAmount > 0,
+            "StakingManager.createLiquidityProviderReward: amount should more than zero"
+        );
         require(teamOutOfReward[lpAddress] == false, "StakingManager.createLiquidityProviderReward: team out of reward");
+        LiquidityProviderStakingReward storage lpStakingReward = totalLpStakingReward[lpAddress];
 
-        totalLpStakingReward[lpAddress].totalReward += amount;
-        uint256 usdtRewardAmount = IChooseMeToken(underlyingToken).quote(totalLpStakingReward[lpAddress].totalReward);
-        if (usdtRewardAmount > totalLpStakingReward[lpAddress].totalStaking * 3) {
-            outOfAchieveReturnsNode(lpAddress, totalLpStakingReward[lpAddress].totalReward);
+        uint256 usdtRewardAmount = usdtAmount;
+        if (lpStakingReward.totalUReward + usdtRewardAmount > lpStakingReward.totalStaking * 3) {
+            usdtRewardAmount = lpStakingReward.totalStaking * 3 - lpStakingReward.totalUReward;
         }
 
+        lpStakingReward.totalUReward += usdtRewardAmount;
+        tokenAmount = tokenAmount * usdtRewardAmount / usdtAmount;
+
+        lpStakingReward.totalReward += tokenAmount;
+
         if (incomeType == uint8(StakingRewardType.DailyNormalReward)) {
-            totalLpStakingReward[lpAddress].dailyNormalReward += amount;
+            lpStakingReward.dailyNormalReward += tokenAmount;
         } else if (incomeType == uint8(StakingRewardType.DirectReferralReward)) {
-            totalLpStakingReward[lpAddress].directReferralReward += amount;
+            lpStakingReward.directReferralReward += tokenAmount;
         } else if (incomeType == uint8(StakingRewardType.TeamReferralReward)) {
-            totalLpStakingReward[lpAddress].teamReferralReward += amount;
+            lpStakingReward.teamReferralReward += tokenAmount;
         } else if (incomeType == uint8(StakingRewardType.FomoPoolReward)) {
-            totalLpStakingReward[lpAddress].fomoPoolReward += amount;
+            lpStakingReward.fomoPoolReward += tokenAmount;
         } else {
             revert InvalidRewardTypeError(incomeType);
         }
 
         emit LiquidityProviderRewards({
-            liquidityProvider: lpAddress, amount: amount, rewardBlock: block.number, incomeType: incomeType
+            liquidityProvider: lpAddress,
+            tokenAmount: tokenAmount,
+            usdtAmount: usdtRewardAmount,
+            rewardBlock: block.number,
+            incomeType: incomeType
         });
     }
 
     function createLiquidityProviderRewardBatch(BatchReward[] memory batchRewards) public onlyStakingOperatorManager {
         for (uint256 i = 0; i < batchRewards.length; i++) {
-            createLiquidityProviderReward(batchRewards[i].lpAddress, batchRewards[i].amount, batchRewards[i].incomeType);
+            createLiquidityProviderReward(
+                batchRewards[i].lpAddress,
+                batchRewards[i].tokenAmount,
+                batchRewards[i].usdtAmount,
+                batchRewards[i].incomeType
+            );
         }
     }
 

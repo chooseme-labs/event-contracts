@@ -35,6 +35,8 @@ interface IStakingManager {
         address liquidityProvider;
         uint8 stakingType;
         uint256 amount;
+        uint256 rewardUAmount;
+        uint256 rewardAmount;
         uint256 startTime;
         uint256 endTime;
         uint8 stakingStatus;
@@ -54,12 +56,14 @@ interface IStakingManager {
 
     struct BatchReward {
         address lpAddress;
+        uint256 round;
         uint256 tokenAmount;
         uint256 usdtAmount;
         uint8 incomeType;
     }
 
     event LiquidityProviderDeposits(
+        uint256 round,
         address indexed tokenAddress,
         uint8 indexed stakingType,
         address indexed liquidityProvider,
@@ -80,7 +84,9 @@ interface IStakingManager {
 
     event lpClaimReward(address indexed liquidityProvider, uint256 withdrawAmount, uint256 toPredictionAmount);
 
-    event outOfAchieveReturnsNodeExit(address indexed liquidityProvider, uint256 totalReward, uint256 blockNumber);
+    event outOfAchieveReturnsNodeExit(
+        address indexed liquidityProvider, uint256 round, uint256 totalReward, uint256 blockNumber
+    );
 
     event LiquidityAdded(uint256 liquidity, uint256 amount0, uint256 amount1);
 
@@ -96,8 +102,13 @@ interface IStakingManager {
 
     function getLiquidityProvidersByType(uint8 stakingType) external view returns (address[] memory);
 
-    function createLiquidityProviderReward(address lpAddress, uint256 tokenAmount, uint256 usdtAmount, uint8 incomeType)
-        external;
+    function createLiquidityProviderReward(
+        address lpAddress,
+        uint256 round,
+        uint256 tokenAmount,
+        uint256 usdtAmount,
+        uint8 incomeType
+    ) external;
     function createLiquidityProviderRewardBatch(BatchReward[] memory batchRewards) external;
 
     function liquidityProviderRoundStakingOver(address lpAddress, uint256 lpStakingRound) external;

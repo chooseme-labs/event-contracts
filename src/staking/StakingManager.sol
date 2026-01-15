@@ -95,6 +95,8 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
             liquidityProvider: msg.sender,
             stakingType: stakingType,
             amount: amount,
+            rewardUAmount: 0,
+            rewardAmount: 0,
             startTime: block.timestamp,
             endTime: endStakingTimeDuration,
             stakingStatus: 0 // 0: staking; 1: endStaking
@@ -116,11 +118,13 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
             });
         }
 
+        emit LiquidityProviderDeposits(
+            lpStakingRound[msg.sender], USDT, stakingType, msg.sender, amount, block.timestamp, endStakingTime
+        );
+
         totalLpStakingReward[msg.sender].totalStaking += amount;
         lpStakingRound[msg.sender] += 1;
         teamOutOfReward[msg.sender] = false;
-
-        emit LiquidityProviderDeposits(USDT, stakingType, msg.sender, amount, block.timestamp, endStakingTime);
     }
 
     /**
@@ -135,32 +139,42 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
     /**
      * @dev Create liquidity provider reward (only staking operator manager can call)
      * @param lpAddress Liquidity provider address
+     * @param round Staking round
      * @param tokenAmount Token reward amount
      * @param usdtAmount USDT reward amount
      * @param incomeType Income type (0 - daily normal reward, 1 - direct referral reward, 2 - team reward, 3 - FOMO pool reward)
      */
-    function createLiquidityProviderReward(address lpAddress, uint256 tokenAmount, uint256 usdtAmount, uint8 incomeType)
-        public
-        onlyStakingOperatorManager
-    {
+    function createLiquidityProviderReward(
+        address lpAddress,
+        uint256 round,
+        uint256 tokenAmount,
+        uint256 usdtAmount,
+        uint8 incomeType
+    ) public onlyStakingOperatorManager {
         require(lpAddress != address(0), "StakingManager.createLiquidityProviderReward: zero address");
         require(
             tokenAmount > 0 && usdtAmount > 0,
             "StakingManager.createLiquidityProviderReward: amount should more than zero"
         );
-        require(teamOutOfReward[lpAddress] == false, "StakingManager.createLiquidityProviderReward: team out of reward");
         LiquidityProviderStakingReward storage lpStakingReward = totalLpStakingReward[lpAddress];
+        LiquidityProviderInfo storage stakingInfo = currentLiquidityProvider[lpAddress][round];
+        require(
+            stakingInfo.amount * 3 > stakingInfo.rewardUAmount,
+            "StakingManager.createLiquidityProviderReward: already reached limit"
+        );
 
         uint256 usdtRewardAmount = usdtAmount;
         bool reachedLimit = false;
-        if (lpStakingReward.totalUReward + usdtRewardAmount > lpStakingReward.totalStaking * 3) {
-            usdtRewardAmount = lpStakingReward.totalStaking * 3 - lpStakingReward.totalUReward;
+        if (stakingInfo.rewardUAmount + usdtRewardAmount >= stakingInfo.amount * 3) {
+            usdtRewardAmount = stakingInfo.amount * 3 - stakingInfo.rewardUAmount;
             reachedLimit = true;
         }
-
-        lpStakingReward.totalUReward += usdtRewardAmount;
         tokenAmount = tokenAmount * usdtRewardAmount / usdtAmount;
 
+        stakingInfo.rewardUAmount += usdtRewardAmount;
+        stakingInfo.rewardAmount += tokenAmount;
+
+        lpStakingReward.totalUReward += usdtRewardAmount;
         lpStakingReward.totalReward += tokenAmount;
 
         if (incomeType == uint8(StakingRewardType.DailyNormalReward)) {
@@ -184,7 +198,7 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
         });
 
         if (reachedLimit) {
-            outOfAchieveReturnsNode(lpAddress, lpStakingReward.totalReward);
+            outOfAchieveReturnsNode(lpAddress, round, stakingInfo.rewardUAmount);
         }
     }
 
@@ -192,6 +206,7 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
         for (uint256 i = 0; i < batchRewards.length; i++) {
             createLiquidityProviderReward(
                 batchRewards[i].lpAddress,
+                batchRewards[i].round,
                 batchRewards[i].tokenAmount,
                 batchRewards[i].usdtAmount,
                 batchRewards[i].incomeType
@@ -326,11 +341,11 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
      * @param lpAddress Liquidity provider address
      * @param totalReward Total team reward amount
      */
-    function outOfAchieveReturnsNode(address lpAddress, uint256 totalReward) internal {
+    function outOfAchieveReturnsNode(address lpAddress, uint256 round, uint256 totalReward) internal {
         teamOutOfReward[lpAddress] = true;
 
         emit outOfAchieveReturnsNodeExit({
-            liquidityProvider: lpAddress, totalReward: totalReward, blockNumber: block.number
+            liquidityProvider: lpAddress, round: round, totalReward: totalReward, blockNumber: block.number
         });
     }
 }

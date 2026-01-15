@@ -8,9 +8,12 @@ import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 import {EmptyContract} from "../src/utils/EmptyContract.sol";
+import {IChooseMeToken} from "../src/interfaces/token/IChooseMeToken.sol";
 import {ChooseMeToken} from "../src/token/ChooseMeToken.sol";
 import {DaoRewardManager} from "../src/token/allocation/DaoRewardManager.sol";
 import {FomoTreasureManager} from "../src/token/allocation/FomoTreasureManager.sol";
+import {AirdropManager} from "../src/token/allocation/AirdropManager.sol";
+import {MarketManager} from "../src/token/allocation/MarketManager.sol";
 import {NodeManager} from "../src/staking/NodeManager.sol";
 import {StakingManager} from "../src/staking/StakingManager.sol";
 import {EventFundingManager} from "../src/staking/EventFundingManager.sol";
@@ -34,6 +37,8 @@ contract DeployStakingScript is Script {
     ProxyAdmin public fomoTreasureManagerProxyAdmin;
     ProxyAdmin public eventFundingManagerProxyAdmin;
     ProxyAdmin public subTokenFundingManagerProxyAdmin;
+    ProxyAdmin public marketManagerProxyAdmin;
+    ProxyAdmin public airdropManagerProxyAdmin;
 
     ChooseMeToken public chooseMeTokenImplementation;
     ChooseMeToken public chooseMeToken;
@@ -55,6 +60,14 @@ contract DeployStakingScript is Script {
 
     SubTokenFundingManager public subTokenFundingManagerImplementation;
     SubTokenFundingManager public subTokenFundingManager;
+
+    MarketManager public marketManagerImplementation;
+    MarketManager public marketManager;
+
+    AirdropManager public airdropManagerImplementation;
+    AirdropManager public airdropManager;
+
+    AirdropManager public usdt;
 
     function run() public {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
@@ -111,6 +124,18 @@ contract DeployStakingScript is Script {
         subTokenFundingManagerImplementation = new SubTokenFundingManager();
         subTokenFundingManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(address(proxySubTokenFundingManager)));
 
+        TransparentUpgradeableProxy proxyMarketManager =
+            new TransparentUpgradeableProxy(address(emptyContract), chooseMeMultiSign, "");
+        marketManager = MarketManager(payable(address(proxyMarketManager)));
+        marketManagerImplementation = new MarketManager();
+        marketManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(address(proxyMarketManager)));
+
+        TransparentUpgradeableProxy proxyAirdropManager =
+            new TransparentUpgradeableProxy(address(emptyContract), chooseMeMultiSign, "");
+        airdropManager = AirdropManager(payable(address(proxyAirdropManager)));
+        airdropManagerImplementation = new AirdropManager();
+        airdropManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(address(proxyAirdropManager)));
+
         chooseMeTokenProxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(address(chooseMeToken)),
             address(chooseMeTokenImplementation),
@@ -144,7 +169,8 @@ contract DeployStakingScript is Script {
                 distributeRewardAddress,
                 address(daoRewardManager),
                 address(eventFundingManager),
-                address(nodeManager)
+                address(nodeManager),
+                address(subTokenFundingManager)
             )
         );
 
@@ -178,6 +204,18 @@ contract DeployStakingScript is Script {
             abi.encodeWithSelector(SubTokenFundingManager.initialize.selector, chooseMeMultiSign, usdtTokenAddress)
         );
 
+        marketManagerProxyAdmin.upgradeAndCall(
+            ITransparentUpgradeableProxy(address(marketManager)),
+            address(marketManagerImplementation),
+            abi.encodeWithSelector(MarketManager.initialize.selector, chooseMeMultiSign, usdtTokenAddress)
+        );
+
+        airdropManagerProxyAdmin.upgradeAndCall(
+            ITransparentUpgradeableProxy(address(airdropManager)),
+            address(airdropManagerImplementation),
+            abi.encodeWithSelector(AirdropManager.initialize.selector, chooseMeMultiSign, usdtTokenAddress)
+        );
+
         console.log("deploy usdtTokenAddress:", usdtTokenAddress);
         console.log("deploy proxyChooseMeToken:", address(proxyChooseMeToken));
         console.log("deploy proxyStakingManager:", address(proxyStakingManager));
@@ -186,7 +224,8 @@ contract DeployStakingScript is Script {
         console.log("deploy proxyFomoTreasureManager:", address(proxyFomoTreasureManager));
         console.log("deploy proxyEventFundingManager:", address(proxyEventFundingManager));
         console.log("deploy proxySubTokenFundingManager:", address(proxySubTokenFundingManager));
-
+        console.log("deploy proxyMarketManager:", address(proxyMarketManager));
+        console.log("deploy proxyAirdropManager:", address(proxyAirdropManager));
         vm.stopBroadcast();
 
         string memory obj = "{}";
@@ -197,10 +236,54 @@ contract DeployStakingScript is Script {
         vm.serializeAddress(obj, "proxyDaoRewardManager", address(proxyDaoRewardManager));
         vm.serializeAddress(obj, "proxyFomoTreasureManager", address(proxyFomoTreasureManager));
         vm.serializeAddress(obj, "proxyEventFundingManager", address(proxyEventFundingManager));
+        vm.serializeAddress(obj, "proxyMarketManager", address(proxyMarketManager));
+        vm.serializeAddress(obj, "proxyAirdropManager", address(proxyAirdropManager));
+
         string memory finalJSON =
             vm.serializeAddress(obj, "proxySubTokenFundingManager", address(proxySubTokenFundingManager));
 
         vm.writeJson(finalJSON, "./cache/__deployed_addresses.json");
+    }
+
+    // forge script DeployStakingScript --sig "initChooseMeToken()"  --slow --multi --rpc-url https://bsc-dataseed.binance.org --broadcast
+    function initChooseMeToken() public {
+        string memory json = vm.readFile("./cache/__deployed_addresses.json");
+        address proxyChooseMeToken = vm.parseJsonAddress(json, ".proxyChooseMeToken");
+        address proxyDaoRewardManager = vm.parseJsonAddress(json, ".proxyDaoRewardManager");
+        address proxyMarketManager = vm.parseJsonAddress(json, ".proxyMarketManager");
+        address proxyAirdropManager = vm.parseJsonAddress(json, ".proxyAirdropManager");
+        address proxySubTokenFundingManager = vm.parseJsonAddress(json, ".proxySubTokenFundingManager");
+
+        ChooseMeToken chooseMeToken = ChooseMeToken(proxyChooseMeToken);
+        if (chooseMeToken.balanceOf(address(daoRewardManager)) > 0) return;
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+
+        vm.startBroadcast(deployerPrivateKey);
+        IChooseMeToken.ChooseMePool memory pools = IChooseMeToken.ChooseMePool({
+            nodePool: vm.rememberKey(deployerPrivateKey),
+            techRewardsPool: vm.rememberKey(deployerPrivateKey),
+            foundingStrategyPool: vm.rememberKey(deployerPrivateKey),
+            daoRewardPool: proxyDaoRewardManager,
+            airdropPool: proxyAirdropManager,
+            marketingPool: proxyMarketManager,
+            subTokenPool: proxySubTokenFundingManager
+        });
+
+        address[] memory marketingPools = new address[](1);
+        marketingPools[0] = vm.rememberKey(deployerPrivateKey);
+
+        address[] memory ecosystemPools = new address[](1);
+        ecosystemPools[0] = vm.rememberKey(deployerPrivateKey);
+
+        chooseMeToken.setPoolAddress(pools, marketingPools, ecosystemPools);
+        console.log("Pool addresses set");
+
+        // Execute pool allocation
+        chooseMeToken.poolAllocate();
+        console.log("Pool allocation completed");
+        console.log("Total Supply:", chooseMeToken.totalSupply() / 1e6, "CMT");
+
+        vm.stopBroadcast();
     }
 
     function getProxyAdminAddress(address proxy) internal view returns (address) {

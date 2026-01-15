@@ -16,6 +16,8 @@ import {ChooseMeToken} from "../src/token/ChooseMeToken.sol";
 import {IChooseMeToken} from "../src/interfaces/token/IChooseMeToken.sol";
 import {DaoRewardManager} from "../src/token/allocation/DaoRewardManager.sol";
 import {FomoTreasureManager} from "../src/token/allocation/FomoTreasureManager.sol";
+import {AirdropManager} from "../src/token/allocation/AirdropManager.sol";
+import {MarketManager} from "../src/token/allocation/MarketManager.sol";
 import {NodeManager} from "../src/staking/NodeManager.sol";
 import {StakingManager} from "../src/staking/StakingManager.sol";
 import {EventFundingManager} from "../src/staking/EventFundingManager.sol";
@@ -51,6 +53,9 @@ contract BroadcastStakingScript is Script {
     FomoTreasureManager public fomoTreasureManager;
     EventFundingManager public eventFundingManager;
     SubTokenFundingManager public subTokenFundingManager;
+    MarketManager public marketManager;
+    AirdropManager public airdropManager;
+
     IPancakeRouter public pancakeRouter;
 
     uint256 cmtDecimals = 10 ** 6;
@@ -74,9 +79,9 @@ contract BroadcastStakingScript is Script {
 
         initContracts();
 
-        // initChooseMeToken();
+        initChooseMeToken();
         // transferGasFee(initPoolPrivateKey);
-        transfer();
+        // transfer();
         // addLiquidity();
 
         // distributeNodeRewards(deployerPrivateKey, 0x7f345497612FbA3DFb923b422D67108BB5894EA6, 1000 * cmtDecimals, 0);
@@ -86,14 +91,29 @@ contract BroadcastStakingScript is Script {
     }
 
     function initContracts() internal {
-        usdt = ERC20(payable(0xC6b745cC58B2682F6b5a23f5237F13A4E9B1Aa8a));
-        chooseMeToken = ChooseMeToken(payable(0x9c160Fa55E01Ed9d3D00F69F9F3D6f3755d64484));
-        daoRewardManager = DaoRewardManager(payable(0x3584CB390400B717B575a4026c2C55b066EAE55C));
-        eventFundingManager = EventFundingManager(payable(0x3243464Cd3fa6a469C3518F40146A608B6b26f39));
-        fomoTreasureManager = FomoTreasureManager(payable(0xbabA1933619Fd156e87Da82a1b3f6660514bB8e8));
-        nodeManager = NodeManager(payable(0xe3d2de76bdB390A7e9c0500efFC35B2266dfeBeB));
-        stakingManager = StakingManager(payable(0x35Fa1789EDcD0ED819FDd663e0F563e5a48475EF));
-        subTokenFundingManager = SubTokenFundingManager(payable(0x8365b9BC8e965c08dcB8bcCcBECA02B8760e90C4));
+        string memory json = vm.readFile("./cache/__deployed_addresses.json");
+        address usdtTokenAddress = vm.parseJsonAddress(json, ".usdtTokenAddress");
+        address proxyChooseMeToken = vm.parseJsonAddress(json, ".proxyChooseMeToken");
+        address proxyStakingManager = vm.parseJsonAddress(json, ".proxyStakingManager");
+        address proxyNodeManager = vm.parseJsonAddress(json, ".proxyNodeManager");
+        address proxyDaoRewardManager = vm.parseJsonAddress(json, ".proxyDaoRewardManager");
+        address proxyFomoTreasureManager = vm.parseJsonAddress(json, ".proxyFomoTreasureManager");
+        address proxyEventFundingManager = vm.parseJsonAddress(json, ".proxyEventFundingManager");
+        address proxyMarketManager = vm.parseJsonAddress(json, ".proxyMarketManager");
+        address proxyAirdropManager = vm.parseJsonAddress(json, ".proxyAirdropManager");
+        address proxySubTokenFundingManager = vm.parseJsonAddress(json, ".proxySubTokenFundingManager");
+
+        usdt = ERC20(payable(usdtTokenAddress));
+        chooseMeToken = ChooseMeToken(payable(proxyChooseMeToken));
+        daoRewardManager = DaoRewardManager(payable(proxyDaoRewardManager));
+        eventFundingManager = EventFundingManager(payable(proxyEventFundingManager));
+        fomoTreasureManager = FomoTreasureManager(payable(proxyFomoTreasureManager));
+        nodeManager = NodeManager(payable(proxyNodeManager));
+        stakingManager = StakingManager(payable(proxyStakingManager));
+        subTokenFundingManager = SubTokenFundingManager(payable(proxySubTokenFundingManager));
+        marketManager = MarketManager(payable(proxyMarketManager));
+        airdropManager = AirdropManager(payable(proxyAirdropManager));
+
         pancakeRouter = IPancakeRouter(0x10ED43C718714eb63d5aA57B78B54704E256024E); // PancakeSwap Router V2
         console.log("Contracts initialized");
     }
@@ -106,10 +126,10 @@ contract BroadcastStakingScript is Script {
         IChooseMeToken.ChooseMePool memory pools = IChooseMeToken.ChooseMePool({
             nodePool: vm.rememberKey(deployerPrivateKey),
             daoRewardPool: address(daoRewardManager),
-            airdropPool: vm.rememberKey(initPoolPrivateKey),
+            airdropPool: address(airdropManager),
             techRewardsPool: vm.rememberKey(initPoolPrivateKey),
             foundingStrategyPool: vm.rememberKey(initPoolPrivateKey),
-            marketingPool: vm.rememberKey(initPoolPrivateKey),
+            marketingPool: address(marketManager),
             subTokenPool: address(subTokenFundingManager)
         });
         address[] memory marketingPools = new address[](1);

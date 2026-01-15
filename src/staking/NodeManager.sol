@@ -81,6 +81,19 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
     }
 
     /**
+     * @dev Set root inviter - Only distribute reward manager can call
+     * @param rootInviter Address to be set as root inviter
+     * @param user Address of the user for whom the root inviter is being set
+     */
+    function bindRootInviter(address rootInviter, address user) external onlyDistributeRewardManager {
+        require(rootInviter != address(0) && user != address(0), "Root inviter and user cannot be zero address");
+        require(inviters[user] == address(0), "Root inviter already set");
+
+        inviters[user] = rootInviter;
+        emit BindInviter({inviter: rootInviter, invitee: user});
+    }
+
+    /**
      * @dev Distribute node rewards (only reward distribution manager can call)
      * @param recipient Address receiving the reward
      * @param tokenAmount Token reward amount (CMT)

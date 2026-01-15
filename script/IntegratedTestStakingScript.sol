@@ -66,6 +66,7 @@ contract IntegratedTestStakingScript is Script {
 
     // Proxy contracts
     ProxyAdmin public proxyAdmin;
+    uint256 deployerPrivateKey;
 
     // Test accounts
     address public owner;
@@ -85,7 +86,7 @@ contract IntegratedTestStakingScript is Script {
     function run() public {
         console.log("=== Starting Integrated Staking Tests ===");
 
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         owner = vm.addr(deployerPrivateKey);
 
         vm.startBroadcast(deployerPrivateKey);
@@ -100,6 +101,9 @@ contract IntegratedTestStakingScript is Script {
         addInitialLiquidity();
 
         vm.stopBroadcast();
+
+        // Bind inviters for test accounts
+        bindTestAccountsInviters();
 
         // Test 1: StakingManager - Add Liquidity
         testStakingManagerAddLiquidity();
@@ -281,6 +285,43 @@ contract IntegratedTestStakingScript is Script {
         usdt.transfer(address(nodeManager), testAmount);
 
         console.log("Test accounts setup completed");
+    }
+
+    function bindTestAccountsInviters() internal {
+        console.log("\n=== Binding Inviters for Test Accounts ===");
+
+        string memory mnemonic = vm.envString("MNEMONIC");
+        uint256 lp1PrivateKey = vm.deriveKey(mnemonic, 1);
+        address lp1Address = vm.addr(lp1PrivateKey);
+
+        vm.startBroadcast(deployerPrivateKey);
+        // Bind liquidityProvider to owner
+        nodeManager.bindRootInviter(owner, lp1Address);
+        console.log("Owner set as root inviter :", owner, lp1Address);
+        vm.stopBroadcast();
+
+        // Bind liquidityProvider2 to lp1Address
+        uint256 lp2PrivateKey = vm.deriveKey(mnemonic, 2);
+        vm.startBroadcast(lp2PrivateKey);
+        nodeManager.bindInviter(lp1Address);
+        console.log("LP2 bound inviter:", lp1Address);
+        vm.stopBroadcast();
+
+        // Bind nodeOperator1 to lp1Address
+        uint256 nodeOp1PrivateKey = vm.deriveKey(mnemonic, 3);
+        vm.startBroadcast(nodeOp1PrivateKey);
+        nodeManager.bindInviter(lp1Address);
+        console.log("Node Operator 1 bound inviter:", lp1Address);
+        vm.stopBroadcast();
+
+        // Bind nodeOperator2 to lp1Address
+        uint256 nodeOp2PrivateKey = vm.deriveKey(mnemonic, 4);
+        vm.startBroadcast(nodeOp2PrivateKey);
+        nodeManager.bindInviter(lp1Address);
+        console.log("Node Operator 2 bound inviter:", lp1Address);
+        vm.stopBroadcast();
+
+        console.log("All test accounts bound to owner as inviter");
     }
 
     function testStakingManagerAddLiquidity() internal {

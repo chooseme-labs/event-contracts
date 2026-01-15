@@ -73,6 +73,7 @@ interface IStakingManager {
     );
 
     event LiquidityProviderRewards(
+        uint256 indexed round,
         address indexed liquidityProvider,
         uint256 tokenAmount,
         uint256 usdtAmount,

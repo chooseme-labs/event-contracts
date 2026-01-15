@@ -190,6 +190,7 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
         }
 
         emit LiquidityProviderRewards({
+            round: round,
             liquidityProvider: lpAddress,
             tokenAmount: tokenAmount,
             usdtAmount: usdtRewardAmount,

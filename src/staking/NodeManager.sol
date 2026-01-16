@@ -106,7 +106,7 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
     {
         require(recipient != address(0), "NodeManager.distributeRewards: zero address");
         require(tokenAmount > 0 && usdtAmount > 0, "NodeManager.distributeRewards: amount must more than zero");
-        require(incomeType <= uint256(NodeIncomeType.PromoteProfit), "Invalid income type");
+        require(incomeType <= uint256(NodeIncomeType.TeamReferralProfit), "Invalid income type");
         require(!rewardClaimInfo[recipient].isOutOf, "Recipient is out of rewards");
 
         uint256 usdtRewardAmount = usdtAmount;

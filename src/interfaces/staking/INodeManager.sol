@@ -8,11 +8,12 @@ interface INodeManager {
     }
 
     enum NodeIncomeType {
-        NodeTypeProfit,
+        DailyNormalProfit,
         TradeFeeProfit,
         ChildCoinProfit,
         SecondTierMarketProfit,
-        PromoteProfit
+        DirectReferralProfit,
+        TeamReferralProfit
     }
 
     struct NodeBuyerInfo {

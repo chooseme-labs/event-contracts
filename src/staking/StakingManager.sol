@@ -61,6 +61,10 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
         subTokenFundingManager = _subTokenFundingManager;
     }
 
+    function setUnderlyingToken(address _underlyingToken) external onlyOwner {
+        underlyingToken = _underlyingToken;
+    }
+
     /**
      * @dev Liquidity provider staking deposit - User side
      * @param amount Staking amount, must match one of the staking types from T1-T6

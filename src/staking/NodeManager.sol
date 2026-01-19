@@ -53,6 +53,10 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
         eventFundingManager = IEventFundingManager(_eventFundingManager);
     }
 
+    function setUnderlyingToken(address _underlyingToken) external onlyOwner {
+        underlyingToken = _underlyingToken;
+    }
+
     /**
      * @dev Purchase node - User side
      * @param amount Token amount required to purchase node, must match distributed node or cluster node price

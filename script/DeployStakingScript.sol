@@ -257,6 +257,16 @@ contract DeployStakingScript is Script {
             ITransparentUpgradeableProxy(address(nodeManager)), address(nodeManagerImplementation), ""
         );
 
+        stakingManagerImplementation = new StakingManager();
+        stakingManagerProxyAdmin.upgradeAndCall(
+            ITransparentUpgradeableProxy(address(stakingManager)), address(stakingManagerImplementation), ""
+        );
+
+        chooseMeTokenImplementation = new ChooseMeToken();
+        chooseMeTokenProxyAdmin.upgradeAndCall(
+            ITransparentUpgradeableProxy(address(chooseMeToken)), address(chooseMeTokenImplementation), ""
+        );
+
         vm.stopBroadcast();
     }
 

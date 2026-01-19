@@ -485,7 +485,7 @@ contract TestNodeManager is Test {
         nodeManager.purchaseNode(DISTRIBUTED_NODE_PRICE);
 
         vm.startPrank(distributeRewardAddress);
-        for (uint8 i = 0; i <= uint8(INodeManager.NodeIncomeType.PromoteProfit); i++) {
+        for (uint8 i = 0; i <= uint8(INodeManager.NodeIncomeType.TeamReferralProfit); i++) {
             nodeManager.distributeRewards(buyer1, 10 * 10 ** 18, 10 * 10 ** 18, i);
         }
         vm.stopPrank();

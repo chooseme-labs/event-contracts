@@ -109,14 +109,8 @@ contract TestNodeManager is Test {
         daoRewardManager.initialize(owner, address(chooseMeToken), address(nodeManager), distributeRewardAddress);
 
         // Initialize NodeManager
-        nodeManager.initialize(
-            owner,
-            address(daoRewardManager),
-            address(chooseMeToken),
-            address(usdt),
-            distributeRewardAddress,
-            address(eventFundingManager)
-        );
+        nodeManager.initialize(owner, address(usdt), distributeRewardAddress);
+        nodeManager.setConfig(address(chooseMeToken), address(daoRewardManager), address(eventFundingManager));
 
         // Setup tokens for testing
         usdt.mint(buyer1, 10000 * 10 ** 18);
@@ -427,14 +421,8 @@ contract TestNodeManager is Test {
     function testCannotReinitialize() public {
         vm.prank(owner);
         vm.expectRevert();
-        nodeManager.initialize(
-            owner,
-            address(daoRewardManager),
-            address(chooseMeToken),
-            address(usdt),
-            distributeRewardAddress,
-            address(eventFundingManager)
-        );
+        nodeManager.initialize(owner, address(usdt), distributeRewardAddress);
+        nodeManager.setConfig(address(chooseMeToken), address(daoRewardManager), address(eventFundingManager));
     }
 
     function testNodePurchaseWithExactAmountRequired() public {

@@ -6,6 +6,7 @@ import {Script, console} from "forge-std/Script.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 
 import {EmptyContract} from "../src/utils/EmptyContract.sol";
 import {IChooseMeToken} from "../src/interfaces/token/IChooseMeToken.sol";
@@ -21,7 +22,7 @@ import {SubTokenFundingManager} from "../src/staking/SubTokenFundingManager.sol"
 
 contract TestUSDT is ERC20 {
     constructor() ERC20("TestUSDT", "USDT") {
-        _mint(msg.sender, 10000000 * 10 ** 18);
+        _mint(msg.sender, 100000000 * 10 ** 18);
     }
 }
 
@@ -69,14 +70,15 @@ contract DeployStakingScript is Script {
 
     TestUSDT public usdt;
 
+    uint256 deployerPrivateKey;
+
     function run() public {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         (
             address deployerAddress,
             address distributeRewardAddress,
             address chooseMeMultiSign,
             address usdtTokenAddress
-        ) = getENVAddress(deployerPrivateKey);
+        ) = getENVAddress();
 
         vm.startBroadcast(deployerPrivateKey);
 
@@ -241,15 +243,59 @@ contract DeployStakingScript is Script {
 
         string memory finalJSON =
             vm.serializeAddress(obj, "proxySubTokenFundingManager", address(proxySubTokenFundingManager));
+        vm.writeJson(finalJSON, getDeployPath());
+    }
 
-        vm.writeJson(finalJSON, "./cache/__deployed_addresses.json");
+    // forge script DeployStakingScript --sig "deploy1()"  --slow --multi --rpc-url https://bsc-dataseed.binance.org --broadcast
+    function deploy1() public {
+        (
+            address deployerAddress,
+            address distributeRewardAddress,
+            address chooseMeMultiSign,
+            address usdtTokenAddress
+        ) = getENVAddress();
+
+        vm.startBroadcast(deployerPrivateKey);
+
+        emptyContract = new EmptyContract();
+
+        TransparentUpgradeableProxy proxyNodeManager =
+            new TransparentUpgradeableProxy(address(emptyContract), chooseMeMultiSign, "");
+        nodeManager = NodeManager(payable(address(proxyNodeManager)));
+        nodeManagerImplementation = new NodeManager();
+        nodeManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(address(proxyNodeManager)));
+
+        nodeManagerProxyAdmin.upgradeAndCall(
+            ITransparentUpgradeableProxy(address(nodeManager)),
+            address(nodeManagerImplementation),
+            abi.encodeWithSelector(
+                NodeManager.initialize.selector, chooseMeMultiSign, usdtTokenAddress, distributeRewardAddress
+            )
+        );
+
+        (address user1, address user2, address user3, address user4) = getTopUser();
+
+        nodeManager.bindRootInviter(user1, user2);
+        nodeManager.bindRootInviter(user2, user3);
+        nodeManager.bindRootInviter(user3, user4);
+
+        vm.stopBroadcast();
+
+        console.log("deploy usdtTokenAddress:", address(usdtTokenAddress));
+        console.log("deploy nodeManager:", address(nodeManager));
+        console.log("user4:", user4);
+
+        string memory obj = "{}";
+        vm.serializeAddress(obj, "usdtTokenAddress", usdtTokenAddress);
+        string memory finalJSON = vm.serializeAddress(obj, "proxyNodeManager", address(proxyNodeManager));
+        vm.writeJson(finalJSON, getDeployPath());
     }
 
     // forge script DeployStakingScript --sig "update()"  --slow --multi --rpc-url https://bsc-dataseed.binance.org --broadcast
     function update() public {
         initContracts();
+        getCurPrivateKey();
 
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
 
         nodeManagerImplementation = new NodeManager();
@@ -257,15 +303,15 @@ contract DeployStakingScript is Script {
             ITransparentUpgradeableProxy(address(nodeManager)), address(nodeManagerImplementation), ""
         );
 
-        stakingManagerImplementation = new StakingManager();
-        stakingManagerProxyAdmin.upgradeAndCall(
-            ITransparentUpgradeableProxy(address(stakingManager)), address(stakingManagerImplementation), ""
-        );
+        // stakingManagerImplementation = new StakingManager();
+        // stakingManagerProxyAdmin.upgradeAndCall(
+        //     ITransparentUpgradeableProxy(address(stakingManager)), address(stakingManagerImplementation), ""
+        // );
 
-        chooseMeTokenImplementation = new ChooseMeToken();
-        chooseMeTokenProxyAdmin.upgradeAndCall(
-            ITransparentUpgradeableProxy(address(chooseMeToken)), address(chooseMeTokenImplementation), ""
-        );
+        // chooseMeTokenImplementation = new ChooseMeToken();
+        // chooseMeTokenProxyAdmin.upgradeAndCall(
+        //     ITransparentUpgradeableProxy(address(chooseMeToken)), address(chooseMeTokenImplementation), ""
+        // );
 
         vm.stopBroadcast();
     }
@@ -275,7 +321,7 @@ contract DeployStakingScript is Script {
         initContracts();
 
         if (chooseMeToken.balanceOf(address(daoRewardManager)) > 0) return;
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        getCurPrivateKey();
 
         vm.startBroadcast(deployerPrivateKey);
         IChooseMeToken.ChooseMePool memory pools = IChooseMeToken.ChooseMePool({
@@ -350,7 +396,31 @@ contract DeployStakingScript is Script {
         return address(uint160(uint256(adminSlot)));
     }
 
-    function getENVAddress(uint256 deployerPrivateKey)
+    function getDeployPath() public view returns (string memory) {
+        uint256 mode = vm.envUint("MODE");
+        if (mode == 0) {
+            return
+                string(
+                    abi.encodePacked("./cache/__deployed_addresses_dev_", Strings.toString(block.timestamp), ".json")
+                );
+        } else {
+            return
+                string(
+                    abi.encodePacked("./cache/__deployed_addresses_prod_", Strings.toString(block.timestamp), ".json")
+                );
+        }
+    }
+
+    function getCurPrivateKey() public returns (uint256) {
+        uint256 mode = vm.envUint("MODE");
+        if (mode == 0) {
+            deployerPrivateKey = vm.envUint("DEV_PRIVATE_KEY");
+        } else {
+            deployerPrivateKey = vm.envUint("PROD_PRIVATE_KEY");
+        }
+    }
+
+    function getENVAddress()
         public
         returns (
             address deployerAddress,
@@ -359,20 +429,38 @@ contract DeployStakingScript is Script {
             address usdtTokenAddress
         )
     {
+        getCurPrivateKey();
+
         uint256 mode = vm.envUint("MODE");
-        deployerAddress = vm.addr(deployerPrivateKey);
         console.log("mode:", mode == 0 ? "development" : "production");
         if (mode == 0) {
             vm.startBroadcast(deployerPrivateKey);
+            deployerAddress = vm.addr(deployerPrivateKey);
             distributeRewardAddress = deployerAddress;
             chooseMeMultiSign = deployerAddress;
             ERC20 usdtToken = new TestUSDT();
             usdtTokenAddress = address(usdtToken);
             vm.stopBroadcast();
         } else {
+            deployerAddress = vm.addr(deployerPrivateKey);
             distributeRewardAddress = vm.envAddress("DR_ADDRESS");
             chooseMeMultiSign = vm.envAddress("MULTI_SIGNER");
             usdtTokenAddress = vm.envAddress("USDT_TOKEN_ADDRESS");
+        }
+    }
+
+    function getTopUser() public view returns (address user1, address user2, address user3, address user4) {
+        uint256 mode = vm.envUint("MODE");
+        if (mode == 0) {
+            user1 = vm.envAddress("DEV_TOP_USER_1");
+            user2 = vm.envAddress("DEV_TOP_USER_2");
+            user3 = vm.envAddress("DEV_TOP_USER_3");
+            user4 = vm.envAddress("DEV_TOP_USER_4");
+        } else {
+            user1 = vm.envAddress("PROD_TOP_USER_1");
+            user2 = vm.envAddress("PROD_TOP_USER_2");
+            user3 = vm.envAddress("PROD_TOP_USER_3");
+            user4 = vm.envAddress("PROD_TOP_USER_4");
         }
     }
 }

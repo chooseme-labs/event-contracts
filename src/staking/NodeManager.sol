@@ -31,30 +31,28 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
     /**
      * @dev Initialize the contract
      * @param initialOwner Initial owner address
-     * @param _daoRewardManager DAO reward manager contract address
-     * @param _underlyingToken Underlying token address
      * @param _usdt USDT address
      * @param _distributeRewardAddress Reward distribution manager address
-     * @param _eventFundingManager Event funding manager contract address
      */
-    function initialize(
-        address initialOwner,
-        address _daoRewardManager,
-        address _underlyingToken,
-        address _usdt,
-        address _distributeRewardAddress,
-        address _eventFundingManager
-    ) public initializer {
+    function initialize(address initialOwner, address _usdt, address _distributeRewardAddress) public initializer {
         __Ownable_init(initialOwner);
-        daoRewardManager = IDaoRewardManager(_daoRewardManager);
-        underlyingToken = _underlyingToken;
         USDT = _usdt;
         distributeRewardAddress = _distributeRewardAddress;
-        eventFundingManager = IEventFundingManager(_eventFundingManager);
     }
 
-    function setUnderlyingToken(address _underlyingToken) external onlyOwner {
+    /**
+     * @dev setConfig
+     * @param _daoRewardManager DAO reward manager contract address
+     * @param _underlyingToken Underlying token address
+     * @param _eventFundingManager Event funding manager contract address
+     */
+    function setConfig(address _underlyingToken, address _daoRewardManager, address _eventFundingManager)
+        external
+        onlyOwner
+    {
         underlyingToken = _underlyingToken;
+        daoRewardManager = IDaoRewardManager(_daoRewardManager);
+        eventFundingManager = IEventFundingManager(_eventFundingManager);
     }
 
     /**

@@ -69,8 +69,8 @@ contract BroadcastStakingScript is Script {
     uint256 user5PrivateKey;
 
     function run() public {
-        deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        string memory mnemonic = vm.envString("MNEMONIC");
+        deployerPrivateKey = vm.envUint("DEV_PRIVATE_KEY");
+        string memory mnemonic = vm.envString("DEV_MNEMONIC");
         initPoolPrivateKey = vm.deriveKey(mnemonic, 1);
         user2PrivateKey = vm.deriveKey(mnemonic, 2);
         user3PrivateKey = vm.deriveKey(mnemonic, 3);
@@ -79,15 +79,26 @@ contract BroadcastStakingScript is Script {
 
         initContracts();
 
-        initChooseMeToken();
+        // vm.startBroadcast(0xa5ee8193bd7b1482841354a06eb2dd700afa214f45f1d8746578f066a9459629);
+        // (,, uint256 amount) = nodeManager.nodeBuyerInfo(0xCD5434571F95A4f4Cc013A9AE4addbF5281B6652);
+        // console.log("nodeBuyerInfo", amount);
+        // nodeManager.purchaseNode(nodeManager.buyDistributedNode());
+        // vm.stopBroadcast();
+        // console.log("====", nodeManager.inviters(0xCD5434571F95A4f4Cc013A9AE4addbF5281B6652));
+
+        // initChooseMeToken();
         // transferGasFee(initPoolPrivateKey);
-        // transfer();
+        transfer();
         // addLiquidity();
 
         // distributeNodeRewards(deployerPrivateKey, 0x7f345497612FbA3DFb923b422D67108BB5894EA6, 1000 * cmtDecimals, 0);
         // createLiquidityProviderReward(
         //     deployerPrivateKey, 0x7f345497612FbA3DFb923b422D67108BB5894EA6, 1000 * cmtDecimals, 0
         // );
+
+        // bindRootInviter(0x57Eed9DeFadE3Fd6743aeD4747Da92B5E8A92E6b, 0x53B5D1eFf42b30284f7A04f9448DbC1D96FD8083);
+        // bindRootInviter(0x53B5D1eFf42b30284f7A04f9448DbC1D96FD8083, 0x83Fd53A16eB4076404DAc4eC4102af7DD632b742);
+        // bindRootInviter(0x83Fd53A16eB4076404DAc4eC4102af7DD632b742, 0x9e82E436c3D782d1A8cC41F942FCc6fBc72979b3);
     }
 
     function initContracts() internal {
@@ -103,7 +114,7 @@ contract BroadcastStakingScript is Script {
         address proxyAirdropManager = vm.parseJsonAddress(json, ".proxyAirdropManager");
         address proxySubTokenFundingManager = vm.parseJsonAddress(json, ".proxySubTokenFundingManager");
 
-        usdt = ERC20(payable(usdtTokenAddress));
+        usdt = TestUSDT(payable(usdtTokenAddress));
         chooseMeToken = ChooseMeToken(payable(proxyChooseMeToken));
         daoRewardManager = DaoRewardManager(payable(proxyDaoRewardManager));
         eventFundingManager = EventFundingManager(payable(proxyEventFundingManager));
@@ -196,18 +207,30 @@ contract BroadcastStakingScript is Script {
     }
 
     function transfer() internal {
-        vm.startBroadcast(initPoolPrivateKey);
-        // usdt.transfer(0xD837FF8cb366D1f9ebDB0659b066b709804D52bc, 100000 * usdtDecimals);
+        vm.startBroadcast(deployerPrivateKey);
+        usdt.transfer(0xD837FF8cb366D1f9ebDB0659b066b709804D52bc, 1000000 * usdtDecimals);
         // chooseMeToken.transfer(0xD837FF8cb366D1f9ebDB0659b066b709804D52bc, 100000 * cmtDecimals);
 
-        // usdt.transfer(0x7f345497612FbA3DFb923b422D67108BB5894EA6, 100000 * usdtDecimals);
+        usdt.transfer(0x7f345497612FbA3DFb923b422D67108BB5894EA6, 1000000 * usdtDecimals);
         // chooseMeToken.transfer(0x7f345497612FbA3DFb923b422D67108BB5894EA6, 100000 * cmtDecimals);
 
-        // usdt.transfer(0xcCA370146cabEb663a277c80db355aAf749fa3eb, 100000 * usdtDecimals);
+        usdt.transfer(0xAE8A6Fc4AB6E7F9881148AFe6A43951Fb2578527, 1000000 * usdtDecimals);
+        // chooseMeToken.transfer(0xAE8A6Fc4AB6E7F9881148AFe6A43951Fb2578527, 1000000 * cmtDecimals);
+
+        usdt.transfer(0x531557BC1053d42Af445Aed5c7E56747F34ba6Ab, 1000000 * usdtDecimals);
+        // chooseMeToken.transfer(0x531557BC1053d42Af445Aed5c7E56747F34ba6Ab, 1000000 * cmtDecimals);
+
+        usdt.transfer(0xcCA370146cabEb663a277c80db355aAf749fa3eb, 1000000 * usdtDecimals);
         // chooseMeToken.transfer(0xcCA370146cabEb663a277c80db355aAf749fa3eb, 100000 * cmtDecimals);
 
-        usdt.transfer(0x3BE8e7EA327b3DC9A39BD2B9247b21836a78b2aE, 100000 * usdtDecimals);
-        chooseMeToken.transfer(0x3BE8e7EA327b3DC9A39BD2B9247b21836a78b2aE, 100000 * cmtDecimals);
+        usdt.transfer(0x3BE8e7EA327b3DC9A39BD2B9247b21836a78b2aE, 1000000 * usdtDecimals);
+        // chooseMeToken.transfer(0x3BE8e7EA327b3DC9A39BD2B9247b21836a78b2aE, 100000 * cmtDecimals);
+
+        usdt.transfer(0xD837FF8cb366D1f9ebDB0659b066b709804D52bc, 1000000 * usdtDecimals);
+        // chooseMeToken.transfer(0xD837FF8cb366D1f9ebDB0659b066b709804D52bc, 100000 * cmtDecimals);
+
+        usdt.transfer(0xCD5434571F95A4f4Cc013A9AE4addbF5281B6652, 1000000 * usdtDecimals);
+        // chooseMeToken.transfer(0xCD5434571F95A4f4Cc013A9AE4addbF5281B6652, 100000 * cmtDecimals);
 
         vm.stopBroadcast();
     }
@@ -266,6 +289,16 @@ contract BroadcastStakingScript is Script {
         console.log("Amount in:", amounts[0]);
         console.log("Amount out:", amounts[1]);
 
+        vm.stopBroadcast();
+    }
+
+    function bindRootInviter(address inviter, address invitee) internal {
+        console.log("--- Bind Inviter Test ---");
+        console.log("User:", invitee);
+        console.log("Inviter:", inviter);
+
+        vm.startBroadcast(deployerPrivateKey);
+        nodeManager.bindRootInviter(inviter, invitee);
         vm.stopBroadcast();
     }
 

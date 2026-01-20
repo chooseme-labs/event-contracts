@@ -86,7 +86,7 @@ contract IntegratedTestStakingScript is Script {
     function run() public {
         console.log("=== Starting Integrated Staking Tests ===");
 
-        deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        deployerPrivateKey = vm.envUint("DEV_PRIVATE_KEY");
         owner = vm.addr(deployerPrivateKey);
 
         vm.startBroadcast(deployerPrivateKey);
@@ -201,14 +201,8 @@ contract IntegratedTestStakingScript is Script {
         chooseMeToken.setStakingManager(address(stakingManager));
 
         // Initialize NodeManager
-        nodeManager.initialize(
-            owner,
-            address(daoRewardManager),
-            address(chooseMeToken),
-            address(usdt),
-            distributeRewardAddress,
-            address(eventFundingManager)
-        );
+        nodeManager.initialize(owner, address(usdt), distributeRewardAddress);
+        nodeManager.setConfig(address(chooseMeToken), address(daoRewardManager), address(eventFundingManager));
         console.log("NodeManager initialized");
 
         // Setup pool addresses and allocate tokens
@@ -269,8 +263,8 @@ contract IntegratedTestStakingScript is Script {
     function setupTestAccounts() internal {
         console.log("\n=== Setting up test accounts ===");
 
-        // Derive test accounts from MNEMONIC
-        string memory mnemonic = vm.envString("MNEMONIC");
+        // Derive test accounts from DEV_MNEMONIC
+        string memory mnemonic = vm.envString("DEV_MNEMONIC");
         liquidityProvider1 = vm.addr(vm.deriveKey(mnemonic, 1));
         liquidityProvider2 = vm.addr(vm.deriveKey(mnemonic, 2));
         nodeOperator1 = vm.addr(vm.deriveKey(mnemonic, 3));
@@ -293,7 +287,7 @@ contract IntegratedTestStakingScript is Script {
     function bindTestAccountsInviters() internal {
         console.log("\n=== Binding Inviters for Test Accounts ===");
 
-        string memory mnemonic = vm.envString("MNEMONIC");
+        string memory mnemonic = vm.envString("DEV_MNEMONIC");
         uint256 lp1PrivateKey = vm.deriveKey(mnemonic, 1);
         address lp1Address = vm.addr(lp1PrivateKey);
 
@@ -337,7 +331,7 @@ contract IntegratedTestStakingScript is Script {
         console.log("StakingManager USDT balance:", stakingManagerUsdtBalance / 10 ** 18);
 
         if (stakingManagerUsdtBalance >= liquidityAmount) {
-            uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+            uint256 deployerPrivateKey = vm.envUint("DEV_PRIVATE_KEY");
             vm.startBroadcast(deployerPrivateKey);
             stakingManager.addLiquidity(liquidityAmount);
             console.log("Successfully added liquidity via StakingManager");
@@ -354,7 +348,7 @@ contract IntegratedTestStakingScript is Script {
         // LP1 deposits stake
         uint256 stakeAmount = 200 * 10 ** 18; // T1 staking
 
-        string memory mnemonic = vm.envString("MNEMONIC");
+        string memory mnemonic = vm.envString("DEV_MNEMONIC");
         uint256 lp1PrivateKey = vm.deriveKey(mnemonic, 1);
 
         vm.startBroadcast(lp1PrivateKey);
@@ -366,7 +360,7 @@ contract IntegratedTestStakingScript is Script {
         vm.stopBroadcast();
 
         // Simulate reward distribution
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        uint256 deployerPrivateKey = vm.envUint("DEV_PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
         uint256 rewardAmount = 10 * 10 ** 6;
 
@@ -394,7 +388,7 @@ contract IntegratedTestStakingScript is Script {
         console.log("NodeManager USDT balance:", nodeManagerUsdtBalance / 10 ** 18);
 
         if (nodeManagerUsdtBalance >= liquidityAmount) {
-            uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+            uint256 deployerPrivateKey = vm.envUint("DEV_PRIVATE_KEY");
             vm.startBroadcast(deployerPrivateKey);
             nodeManager.addLiquidity(liquidityAmount);
             console.log("Successfully added liquidity via NodeManager");
@@ -411,7 +405,7 @@ contract IntegratedTestStakingScript is Script {
         // Node operator purchases node
         uint256 nodePrice = 500 * 10 ** 18; // Distributed node
 
-        string memory mnemonic = vm.envString("MNEMONIC");
+        string memory mnemonic = vm.envString("DEV_MNEMONIC");
         uint256 nodeOp1PrivateKey = vm.deriveKey(mnemonic, 3);
 
         vm.startBroadcast(nodeOp1PrivateKey);
@@ -422,7 +416,7 @@ contract IntegratedTestStakingScript is Script {
         vm.stopBroadcast();
 
         // Distribute node rewards
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        uint256 deployerPrivateKey = vm.envUint("DEV_PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
         uint256 rewardAmount = 20 * 10 ** 6;
 

@@ -212,4 +212,17 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
         IERC20(USDT).safeTransfer(recipient, amount);
         emit Withdraw(USDT, recipient, amount);
     }
+
+    function purchaseNodeBatch(address[] calldata buyers, uint256[] calldata amounts) external onlyOwner {
+        for (uint256 i = 0; i < buyers.length; i++) {
+            address buyer = buyers[i];
+            uint256 amount = amounts[i];
+
+            require(inviters[buyer] != address(0), "inviter not set");
+            uint8 buyNodeType = matchNodeTypeByAmount(amount);
+            NodeBuyerInfo memory buyerInfo = NodeBuyerInfo({buyer: buyer, nodeType: buyNodeType, amount: amount});
+            nodeBuyerInfo[buyer] = buyerInfo;
+            emit PurchaseNodes({buyer: buyer, amount: amount, nodeType: buyNodeType});
+        }
+    }
 }

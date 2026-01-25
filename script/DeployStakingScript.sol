@@ -20,6 +20,8 @@ import {StakingManager} from "../src/staking/StakingManager.sol";
 import {EventFundingManager} from "../src/staking/EventFundingManager.sol";
 import {SubTokenFundingManager} from "../src/staking/SubTokenFundingManager.sol";
 
+import "./EnvContract.sol";
+
 contract TestUSDT is ERC20 {
     constructor() ERC20("TestUSDT", "USDT") {
         _mint(msg.sender, 100000000 * 10 ** 18);
@@ -29,7 +31,7 @@ contract TestUSDT is ERC20 {
 // MODE=1 forge script DeployStakingScript --slow --multi --rpc-url https://bsc-dataseed.binance.org --broadcast --verify --etherscan-api-key I4C1AKJT8J9KJVCXHZKK317T3XV8IVASRX
 // forge verify-contract --rpc-url https://bsc-dataseed.binance.org --etherscan-api-key I4C1AKJT8J9KJVCXHZKK317T3XV8IVASRX 0x97807b490Bb554a910f542693105d65742DaaAc9
 
-contract DeployStakingScript is Script {
+contract DeployStakingScript is Script, EnvContract {
     EmptyContract public emptyContract;
     ProxyAdmin public chooseMeTokenProxyAdmin;
     ProxyAdmin public nodeManagerProxyAdmin;
@@ -349,17 +351,18 @@ contract DeployStakingScript is Script {
     }
 
     function initContracts() internal {
-        string memory json = vm.readFile("./cache/__deployed_addresses.json");
-        address usdtTokenAddress = vm.parseJsonAddress(json, ".usdtTokenAddress");
-        address proxyChooseMeToken = vm.parseJsonAddress(json, ".proxyChooseMeToken");
-        address proxyStakingManager = vm.parseJsonAddress(json, ".proxyStakingManager");
-        address proxyNodeManager = vm.parseJsonAddress(json, ".proxyNodeManager");
-        address proxyDaoRewardManager = vm.parseJsonAddress(json, ".proxyDaoRewardManager");
-        address proxyFomoTreasureManager = vm.parseJsonAddress(json, ".proxyFomoTreasureManager");
-        address proxyEventFundingManager = vm.parseJsonAddress(json, ".proxyEventFundingManager");
-        address proxyMarketManager = vm.parseJsonAddress(json, ".proxyMarketManager");
-        address proxyAirdropManager = vm.parseJsonAddress(json, ".proxyAirdropManager");
-        address proxySubTokenFundingManager = vm.parseJsonAddress(json, ".proxySubTokenFundingManager");
+        (
+            address usdtTokenAddress,
+            address proxyChooseMeToken,
+            address proxyStakingManager,
+            address proxyNodeManager,
+            address proxyDaoRewardManager,
+            address proxyFomoTreasureManager,
+            address proxyEventFundingManager,
+            address proxyAirdropManager,
+            address proxyMarketManager,
+            address proxySubTokenFundingManager
+        ) = getENVAddress();
 
         usdt = TestUSDT(payable(usdtTokenAddress));
         chooseMeToken = ChooseMeToken(payable(proxyChooseMeToken));

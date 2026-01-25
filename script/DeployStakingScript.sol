@@ -74,7 +74,8 @@ contract DeployStakingScript is Script, EnvContract {
 
     uint256 deployerPrivateKey;
 
-    function run() public {
+    // MODE=1 forge script DeployStakingScript --sig "deploy1()"  --slow --multi --rpc-url https://bsc-dataseed.binance.org --broadcast
+    function deploy1() public {
         (
             address deployerAddress,
             address distributeRewardAddress,
@@ -86,14 +87,60 @@ contract DeployStakingScript is Script, EnvContract {
 
         emptyContract = new EmptyContract();
 
+        TransparentUpgradeableProxy proxyNodeManager =
+            new TransparentUpgradeableProxy(address(emptyContract), chooseMeMultiSign, "");
+        nodeManager = NodeManager(payable(address(proxyNodeManager)));
+        nodeManagerImplementation = new NodeManager();
+        nodeManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(address(proxyNodeManager)));
+
+        nodeManagerProxyAdmin.upgradeAndCall(
+            ITransparentUpgradeableProxy(address(nodeManager)),
+            address(nodeManagerImplementation),
+            abi.encodeWithSelector(
+                NodeManager.initialize.selector, chooseMeMultiSign, usdtTokenAddress, distributeRewardAddress
+            )
+        );
+
+        (address user1, address user2, address user3, address user4) = getTopUser();
+
+        nodeManager.bindRootInviter(user1, user2);
+        nodeManager.bindRootInviter(user2, user3);
+        nodeManager.bindRootInviter(user3, user4);
+
+        vm.stopBroadcast();
+
+        console.log("deploy usdtTokenAddress:", address(usdtTokenAddress));
+        console.log("deploy nodeManager:", address(nodeManager));
+        console.log("user4:", user4);
+
+        string memory obj = "{}";
+        vm.serializeAddress(obj, "usdtTokenAddress", usdtTokenAddress);
+        string memory finalJSON = vm.serializeAddress(obj, "proxyNodeManager", address(proxyNodeManager));
+        vm.writeJson(finalJSON, getDeployPath());
+    }
+
+    // MODE=1 forge script DeployStakingScript --sig "deploy2()"  --slow --multi --rpc-url https://bsc-dataseed.binance.org --broadcast
+    function deploy2() public {
+        (
+            address deployerAddress,
+            address distributeRewardAddress,
+            address chooseMeMultiSign,
+            address usdtTokenAddress
+        ) = getENVAddress();
+
+        (,,, address proxyNodeManagerD,,,,,,) = getENVAddress();
+
+        vm.startBroadcast(deployerPrivateKey);
+
+        emptyContract = new EmptyContract();
+
         TransparentUpgradeableProxy proxyChooseMeToken =
             new TransparentUpgradeableProxy(address(emptyContract), chooseMeMultiSign, "");
         chooseMeToken = ChooseMeToken(address(proxyChooseMeToken));
         chooseMeTokenImplementation = new ChooseMeToken();
         chooseMeTokenProxyAdmin = ProxyAdmin(getProxyAdminAddress(address(proxyChooseMeToken)));
 
-        TransparentUpgradeableProxy proxyNodeManager =
-            new TransparentUpgradeableProxy(address(emptyContract), chooseMeMultiSign, "");
+        TransparentUpgradeableProxy proxyNodeManager = TransparentUpgradeableProxy(proxyNodeManagerD);
         nodeManager = NodeManager(payable(address(proxyNodeManager)));
         nodeManagerImplementation = new NodeManager();
         nodeManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(address(proxyNodeManager)));
@@ -145,14 +192,6 @@ contract DeployStakingScript is Script, EnvContract {
             address(chooseMeTokenImplementation),
             abi.encodeWithSelector(
                 ChooseMeToken.initialize.selector, chooseMeMultiSign, address(stakingManager), usdtTokenAddress
-            )
-        );
-
-        nodeManagerProxyAdmin.upgradeAndCall(
-            ITransparentUpgradeableProxy(address(nodeManager)),
-            address(nodeManagerImplementation),
-            abi.encodeWithSelector(
-                NodeManager.initialize.selector, chooseMeMultiSign, usdtTokenAddress, distributeRewardAddress
             )
         );
 
@@ -242,51 +281,6 @@ contract DeployStakingScript is Script, EnvContract {
 
         string memory finalJSON =
             vm.serializeAddress(obj, "proxySubTokenFundingManager", address(proxySubTokenFundingManager));
-        vm.writeJson(finalJSON, getDeployPath());
-    }
-
-    // MODE=1 forge script DeployStakingScript --sig "deploy1()"  --slow --multi --rpc-url https://bsc-dataseed.binance.org --broadcast
-    function deploy1() public {
-        (
-            address deployerAddress,
-            address distributeRewardAddress,
-            address chooseMeMultiSign,
-            address usdtTokenAddress
-        ) = getENVAddress();
-
-        vm.startBroadcast(deployerPrivateKey);
-
-        emptyContract = new EmptyContract();
-
-        TransparentUpgradeableProxy proxyNodeManager =
-            new TransparentUpgradeableProxy(address(emptyContract), chooseMeMultiSign, "");
-        nodeManager = NodeManager(payable(address(proxyNodeManager)));
-        nodeManagerImplementation = new NodeManager();
-        nodeManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(address(proxyNodeManager)));
-
-        nodeManagerProxyAdmin.upgradeAndCall(
-            ITransparentUpgradeableProxy(address(nodeManager)),
-            address(nodeManagerImplementation),
-            abi.encodeWithSelector(
-                NodeManager.initialize.selector, chooseMeMultiSign, usdtTokenAddress, distributeRewardAddress
-            )
-        );
-
-        (address user1, address user2, address user3, address user4) = getTopUser();
-
-        nodeManager.bindRootInviter(user1, user2);
-        nodeManager.bindRootInviter(user2, user3);
-        nodeManager.bindRootInviter(user3, user4);
-
-        vm.stopBroadcast();
-
-        console.log("deploy usdtTokenAddress:", address(usdtTokenAddress));
-        console.log("deploy nodeManager:", address(nodeManager));
-        console.log("user4:", user4);
-
-        string memory obj = "{}";
-        vm.serializeAddress(obj, "usdtTokenAddress", usdtTokenAddress);
-        string memory finalJSON = vm.serializeAddress(obj, "proxyNodeManager", address(proxyNodeManager));
         vm.writeJson(finalJSON, getDeployPath());
     }
 

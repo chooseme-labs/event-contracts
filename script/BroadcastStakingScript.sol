@@ -102,7 +102,8 @@ contract BroadcastStakingScript is Script {
     }
 
     function initContracts() internal {
-        string memory json = vm.readFile("./cache/__deployed_addresses.json");
+        string memory deployPath = getDeployPath();
+        string memory json = vm.readFile(deployPath);
         address usdtTokenAddress = vm.parseJsonAddress(json, ".usdtTokenAddress");
         address proxyChooseMeToken = vm.parseJsonAddress(json, ".proxyChooseMeToken");
         address proxyStakingManager = vm.parseJsonAddress(json, ".proxyStakingManager");
@@ -127,6 +128,15 @@ contract BroadcastStakingScript is Script {
 
         pancakeRouter = IPancakeRouter(0x10ED43C718714eb63d5aA57B78B54704E256024E); // PancakeSwap Router V2
         console.log("Contracts initialized");
+    }
+
+    function getDeployPath() public view returns (string memory) {
+        uint256 mode = vm.envUint("MODE");
+        if (mode == 0) {
+            return string(abi.encodePacked("./cache/__deployed_addresses_dev", ".json"));
+        } else {
+            return string(abi.encodePacked("./cache/__deployed_addresses_prod", ".json"));
+        }
     }
 
     function initChooseMeToken() internal {
@@ -208,29 +218,38 @@ contract BroadcastStakingScript is Script {
 
     function transfer() internal {
         vm.startBroadcast(deployerPrivateKey);
-        usdt.transfer(0xD837FF8cb366D1f9ebDB0659b066b709804D52bc, 1000000 * usdtDecimals);
-        // chooseMeToken.transfer(0xD837FF8cb366D1f9ebDB0659b066b709804D52bc, 100000 * cmtDecimals);
+        // usdt.transfer(0xD837FF8cb366D1f9ebDB0659b066b709804D52bc, 1000000 * usdtDecimals);
+        // // chooseMeToken.transfer(0xD837FF8cb366D1f9ebDB0659b066b709804D52bc, 100000 * cmtDecimals);
 
-        usdt.transfer(0x7f345497612FbA3DFb923b422D67108BB5894EA6, 1000000 * usdtDecimals);
-        // chooseMeToken.transfer(0x7f345497612FbA3DFb923b422D67108BB5894EA6, 100000 * cmtDecimals);
+        // usdt.transfer(0x7f345497612FbA3DFb923b422D67108BB5894EA6, 1000000 * usdtDecimals);
+        // // chooseMeToken.transfer(0x7f345497612FbA3DFb923b422D67108BB5894EA6, 100000 * cmtDecimals);
 
-        usdt.transfer(0xAE8A6Fc4AB6E7F9881148AFe6A43951Fb2578527, 1000000 * usdtDecimals);
-        // chooseMeToken.transfer(0xAE8A6Fc4AB6E7F9881148AFe6A43951Fb2578527, 1000000 * cmtDecimals);
+        // usdt.transfer(0xAE8A6Fc4AB6E7F9881148AFe6A43951Fb2578527, 1000000 * usdtDecimals);
+        // // chooseMeToken.transfer(0xAE8A6Fc4AB6E7F9881148AFe6A43951Fb2578527, 1000000 * cmtDecimals);
 
-        usdt.transfer(0x531557BC1053d42Af445Aed5c7E56747F34ba6Ab, 1000000 * usdtDecimals);
-        // chooseMeToken.transfer(0x531557BC1053d42Af445Aed5c7E56747F34ba6Ab, 1000000 * cmtDecimals);
+        // usdt.transfer(0x531557BC1053d42Af445Aed5c7E56747F34ba6Ab, 1000000 * usdtDecimals);
+        // // chooseMeToken.transfer(0x531557BC1053d42Af445Aed5c7E56747F34ba6Ab, 1000000 * cmtDecimals);
 
-        usdt.transfer(0xcCA370146cabEb663a277c80db355aAf749fa3eb, 1000000 * usdtDecimals);
-        // chooseMeToken.transfer(0xcCA370146cabEb663a277c80db355aAf749fa3eb, 100000 * cmtDecimals);
+        // usdt.transfer(0xcCA370146cabEb663a277c80db355aAf749fa3eb, 1000000 * usdtDecimals);
+        // // chooseMeToken.transfer(0xcCA370146cabEb663a277c80db355aAf749fa3eb, 100000 * cmtDecimals);
 
-        usdt.transfer(0x3BE8e7EA327b3DC9A39BD2B9247b21836a78b2aE, 1000000 * usdtDecimals);
-        // chooseMeToken.transfer(0x3BE8e7EA327b3DC9A39BD2B9247b21836a78b2aE, 100000 * cmtDecimals);
+        // usdt.transfer(0x3BE8e7EA327b3DC9A39BD2B9247b21836a78b2aE, 1000000 * usdtDecimals);
+        // // chooseMeToken.transfer(0x3BE8e7EA327b3DC9A39BD2B9247b21836a78b2aE, 100000 * cmtDecimals);
 
-        usdt.transfer(0xD837FF8cb366D1f9ebDB0659b066b709804D52bc, 1000000 * usdtDecimals);
-        // chooseMeToken.transfer(0xD837FF8cb366D1f9ebDB0659b066b709804D52bc, 100000 * cmtDecimals);
+        // usdt.transfer(0xD837FF8cb366D1f9ebDB0659b066b709804D52bc, 1000000 * usdtDecimals);
+        // // chooseMeToken.transfer(0xD837FF8cb366D1f9ebDB0659b066b709804D52bc, 100000 * cmtDecimals);
 
-        usdt.transfer(0xCD5434571F95A4f4Cc013A9AE4addbF5281B6652, 1000000 * usdtDecimals);
+        // usdt.transfer(0xCD5434571F95A4f4Cc013A9AE4addbF5281B6652, 1000000 * usdtDecimals);
+        // // chooseMeToken.transfer(0xCD5434571F95A4f4Cc013A9AE4addbF5281B6652, 100000 * cmtDecimals);
+
+        // usdt.transfer(0xde71933306cEA6F42F26308B365b909c3b00ddEa, 20000000 * usdtDecimals);
         // chooseMeToken.transfer(0xCD5434571F95A4f4Cc013A9AE4addbF5281B6652, 100000 * cmtDecimals);
+
+        usdt.transfer(0x654AFbBc84401Aa74868EF978096F11A2E0AFbC3, 10000000 * usdtDecimals);
+
+        // usdt.transfer(0x654AFbBc84401Aa74868EF978096F11A2E0AFbC3, 100000 * usdtDecimals);
+        // usdt.transfer(0xAbD2177C975bc9E489FB77F624F08943123D5556, 100000 * usdtDecimals);
+        // usdt.transfer(0xE297a70704b652A4Bf0d378BB5159a502926d1B2, 100000 * usdtDecimals);
 
         vm.stopBroadcast();
     }
@@ -295,7 +314,7 @@ contract BroadcastStakingScript is Script {
     function bindRootInviter(address inviter, address invitee) internal {
         console.log("--- Bind Inviter Test ---");
         console.log("User:", invitee);
-        console.log("Inviter:", inviter);
+        console.log("Inviter:", deployerPrivateKey, inviter);
 
         vm.startBroadcast(deployerPrivateKey);
         nodeManager.bindRootInviter(inviter, invitee);
@@ -415,7 +434,7 @@ contract BroadcastStakingScript is Script {
         uint256 usdtBalance = usdt.balanceOf(address(nodeManager));
         require(usdtBalance >= liquidityAmount, "Insufficient USDT balance for liquidity");
 
-        nodeManager.addLiquidity(liquidityAmount);
+        nodeManager.addLiquidity(liquidityAmount, liquidityAmount);
         console.log("Liquidity added successfully");
 
         vm.stopBroadcast();

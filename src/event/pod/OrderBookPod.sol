@@ -4,432 +4,589 @@ pragma solidity ^0.8.20;
 import "@openzeppelin-upgrades/contracts/proxy/utils/Initializable.sol";
 import "@openzeppelin-upgrades/contracts/access/OwnableUpgradeable.sol";
 import "@openzeppelin-upgrades/contracts/utils/PausableUpgradeable.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 import "./OrderBookPodStorage.sol";
 import "../../interfaces/event/IOrderBookPod.sol";
+import "../../interfaces/event/IEventPod.sol";
 
 contract OrderBookPod is Initializable, OwnableUpgradeable, PausableUpgradeable, OrderBookPodStorage {
-    modifier onlyOrderBookManager() {
-        require(msg.sender == orderBookManager, "OrderBookPod: only orderBookManager");
+    using EnumerableSet for EnumerableSet.UintSet;
+
+    // Modifiers
+    modifier onlyManager() {
+        require(msg.sender == manager, "OrderBookPod: caller is not manager");
         _;
     }
 
     modifier onlyEventPod() {
-        require(msg.sender == eventPod, "OrderBookPod: only eventPod");
+        require(msg.sender == eventPod, "OrderBookPod: caller is not eventPod");
         _;
     }
 
+    modifier orderBookExists(uint256 _orderBookId) {
+        if (orderBooks[_orderBookId].orderBookId == 0) {
+            revert OrderBookNotFound(_orderBookId);
+        }
+        _;
+    }
+
+    modifier orderBookActive(uint256 _orderBookId) {
+        if (!orderBooks[_orderBookId].isActive) {
+            revert OrderBookNotActive(_orderBookId);
+        }
+        _;
+    }
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
-    function initialize(
-        address initialOwner,
-        address _eventPod,
-        address _fundingPod,
-        address _feeVaultPod,
-        address _orderBookManager
-    ) public initializer {
-        __Ownable_init(initialOwner);
+    function initialize(address _manager, address _eventPod) external initializer {
+        if (_manager == address(0) || _eventPod == address(0)) {
+            revert ZeroAddress();
+        }
+
+        __Ownable_init(msg.sender);
         __Pausable_init();
 
+        manager = _manager;
         eventPod = _eventPod;
-        fundingPod = _fundingPod;
-        feeVaultPod = _feeVaultPod;
-        orderBookManager = _orderBookManager;
+        orderIdCounter = 1;
+        tradeIdCounter = 1;
     }
 
-    // ------------------------------------------------------------
-    // External
-    // ------------------------------------------------------------
-    function placeOrder(
-        uint256 eventId,
-        uint256 outcomeId,
-        OrderSide side,
-        uint256 price,
-        uint256 amount,
-        address tokenAddress
-    ) external whenNotPaused onlyOrderBookManager returns (uint256 orderId) {
-        if (!supportedEvents[eventId]) revert EventNotSupported(eventId);
-        if (!supportedOutcomes[eventId][outcomeId]) {
-            revert OutcomeNotSupported(eventId, outcomeId);
+    // ============ OrderBook Management Functions ============
+
+    function createOrderBook(uint256 _eventId, bool _isYesToken) external onlyEventPod returns (uint256 orderBookId) {
+        // Calculate orderBookId: eventId * 10 + 1 (YES) or 2 (NO)
+        orderBookId = _eventId * 10 + (_isYesToken ? 1 : 2);
+
+        if (orderBooks[orderBookId].orderBookId != 0) {
+            revert OrderBookAlreadyExists(orderBookId);
         }
-        if (eventSettled[eventId]) revert EventAlreadySettled(eventId);
-        if (price == 0 || price > MAX_PRICE) revert InvalidPrice(price);
-        if (price % TICK_SIZE != 0) revert PriceNotAlignedWithTickSize(price);
-        if (amount == 0) revert InvalidAmount(amount);
 
-        // Funding module: Lock funds required for order (implemented by funding module)
-        // IFundingPod(fundingPod).lockOnOrderPlaced(msg.sender, tokenAddress, amount, eventId, outcomeId);
-
-        orderId = nextOrderId++;
-        orders[orderId] = Order({
-            orderId: orderId,
-            user: msg.sender,
-            eventId: eventId,
-            outcomeId: outcomeId,
-            side: side,
-            price: price,
-            amount: amount,
-            filledAmount: 0,
-            remainingAmount: amount,
-            status: OrderStatus.Pending,
-            timestamp: block.timestamp,
-            tokenAddress: tokenAddress
+        orderBooks[orderBookId] = OrderBook({
+            orderBookId: orderBookId,
+            eventId: _eventId,
+            isYesToken: _isYesToken,
+            isActive: true,
+            totalBuyVolume: 0,
+            totalSellVolume: 0
         });
-        userOrders[msg.sender].push(orderId);
 
+        emit OrderBookCreated(orderBookId, _eventId, _isYesToken);
+    }
+
+    function deactivateOrderBook(uint256 _orderBookId) external onlyEventPod orderBookExists(_orderBookId) {
+        orderBooks[_orderBookId].isActive = false;
+        emit OrderBookDeactivated(_orderBookId);
+    }
+
+    function isOrderBookActive(uint256 _orderBookId) external view returns (bool) {
+        return orderBooks[_orderBookId].isActive;
+    }
+
+    // ============ Order Placement Functions ============
+
+    function placeLimitOrder(uint256 _orderBookId, OrderSide _side, uint256 _price, uint256 _amount)
+        external
+        whenNotPaused
+        orderBookExists(_orderBookId)
+        orderBookActive(_orderBookId)
+        returns (uint256 orderId)
+    {
+        if (_price == 0) revert InvalidPrice();
+        if (_amount == 0) revert InvalidAmount();
+
+        orderId = _createOrder(_orderBookId, msg.sender, _side, OrderType.LIMIT, _price, _amount);
+
+        // Try to match the order
         _matchOrder(orderId);
 
-        if (orders[orderId].status == OrderStatus.Pending || orders[orderId].status == OrderStatus.Partial) {
-            _addToOrderBook(orderId);
-        }
-
-        emit OrderPlaced(orderId, msg.sender, eventId, outcomeId, side, price, amount);
-    }
-
-    function cancelOrder(uint256 orderId) external onlyOrderBookManager {
+        // If order is not fully filled, add to order book
         Order storage order = orders[orderId];
-
-        if (order.status != OrderStatus.Pending && order.status != OrderStatus.Partial) {
-            revert CannotCancelOrder(orderId);
-        }
-        if (eventSettled[order.eventId]) {
-            revert EventAlreadySettled(order.eventId);
-        }
-
-        _removeFromOrderBook(orderId);
-
-        order.status = OrderStatus.Cancelled;
-
-        if (order.remainingAmount > 0) {
-            // Funding module: Unlock remaining unfilled funds (implemented by funding module)
-            // IFundingPod(fundingPod).unlockOnOrderCancelled(order.user, order.tokenAddress, order.remainingAmount, order.eventId, order.outcomeId);
-        }
-
-        emit OrderCancelled(orderId, order.user, order.remainingAmount);
-    }
-
-    function settleEvent(uint256 eventId, uint256 winningOutcomeId) external onlyEventPod {
-        if (!supportedEvents[eventId]) revert EventNotSupported(eventId);
-        if (eventSettled[eventId]) revert EventAlreadySettled(eventId);
-        if (!supportedOutcomes[eventId][winningOutcomeId]) {
-            revert OutcomeNotSupported(eventId, winningOutcomeId);
-        }
-
-        eventSettled[eventId] = true;
-        eventResults[eventId] = winningOutcomeId;
-
-        _cancelAllPendingOrders(eventId);
-        _settlePositions(eventId, winningOutcomeId);
-
-        emit EventSettled(eventId, winningOutcomeId);
-    }
-
-    function addEvent(uint256 eventId, uint256[] calldata outcomeIds) external onlyOrderBookManager {
-        require(!supportedEvents[eventId], "OrderBookPod: event exists");
-        supportedEvents[eventId] = true;
-
-        EventOrderBook storage eventOrderBook = eventOrderBooks[eventId];
-        for (uint256 i = 0; i < outcomeIds.length; i++) {
-            uint256 outcomeId = outcomeIds[i];
-            require(outcomeId > 0, "OrderBookPod: invalid outcome");
-            supportedOutcomes[eventId][outcomeId] = true;
-            eventOrderBook.supportedOutcomes.push(outcomeId);
-        }
-
-        emit EventAdded(eventId, outcomeIds);
-    }
-
-    function getBestBid(uint256 eventId, uint256 outcomeId) external view returns (uint256 price, uint256 amount) {
-        EventOrderBook storage eventOrderBook = eventOrderBooks[eventId];
-        OutcomeOrderBook storage outcomeOrderBook = eventOrderBook.outcomeOrderBooks[outcomeId];
-
-        if (outcomeOrderBook.buyPriceLevels.length > 0) {
-            price = outcomeOrderBook.buyPriceLevels[0];
-            amount = _totalAtPrice(outcomeOrderBook.buyOrdersByPrice[price]);
+        if (order.status == OrderStatus.OPEN || order.status == OrderStatus.PARTIALLY_FILLED) {
+            _addOrderToBook(orderId);
         }
     }
 
-    function getBestAsk(uint256 eventId, uint256 outcomeId) external view returns (uint256 price, uint256 amount) {
-        EventOrderBook storage eventOrderBook = eventOrderBooks[eventId];
-        OutcomeOrderBook storage outcomeOrderBook = eventOrderBook.outcomeOrderBooks[outcomeId];
+    function placeMarketOrder(uint256 _orderBookId, OrderSide _side, uint256 _amount)
+        external
+        whenNotPaused
+        orderBookExists(_orderBookId)
+        orderBookActive(_orderBookId)
+        returns (uint256 orderId)
+    {
+        if (_amount == 0) revert InvalidAmount();
 
-        if (outcomeOrderBook.sellPriceLevels.length > 0) {
-            price = outcomeOrderBook.sellPriceLevels[0];
-            amount = _totalAtPrice(outcomeOrderBook.sellOrdersByPrice[price]);
-        }
-    }
+        orderId = _createOrder(_orderBookId, msg.sender, _side, OrderType.MARKET, 0, _amount);
 
-    // ------------------------------------------------------------
-    // Internal: matching order execution
-    // ------------------------------------------------------------
-    function _matchOrder(uint256 orderId) internal {
+        // Match market order immediately
+        _matchOrder(orderId);
+
+        // Market orders that are not fully filled are cancelled
         Order storage order = orders[orderId];
-        EventOrderBook storage eventOrderBook = eventOrderBooks[order.eventId];
-        OutcomeOrderBook storage outcomeOrderBook = eventOrderBook.outcomeOrderBooks[order.outcomeId];
+        if (order.status != OrderStatus.FILLED) {
+            order.status = OrderStatus.CANCELLED;
+            emit OrderCancelled(orderId, order.maker);
+        }
+    }
 
-        if (order.side == OrderSide.Buy) {
-            _matchBuy(orderId, outcomeOrderBook);
+    // ============ Order Cancellation Functions ============
+
+    function cancelOrder(uint256 _orderId) external {
+        Order storage order = orders[_orderId];
+
+        if (order.orderId == 0) {
+            revert OrderNotFound(_orderId);
+        }
+        if (order.maker != msg.sender && msg.sender != manager) {
+            revert UnauthorizedCancellation(msg.sender, order.maker);
+        }
+        if (order.status == OrderStatus.CANCELLED) {
+            revert OrderAlreadyCancelled(_orderId);
+        }
+        if (order.status == OrderStatus.FILLED) {
+            revert OrderAlreadyFilled(_orderId);
+        }
+
+        _cancelOrder(_orderId);
+    }
+
+    function batchCancelOrders(uint256[] calldata _orderIds) external {
+        for (uint256 i = 0; i < _orderIds.length; i++) {
+            uint256 orderId = _orderIds[i];
+            Order storage order = orders[orderId];
+
+            if (order.orderId == 0) continue;
+            if (order.maker != msg.sender && msg.sender != manager) continue;
+            if (order.status == OrderStatus.CANCELLED || order.status == OrderStatus.FILLED) continue;
+
+            _cancelOrder(orderId);
+        }
+    }
+
+    // ============ Off-chain Matching Support ============
+
+    function executeMatchedOrders(
+        uint256 _orderBookId,
+        uint256[] calldata _buyOrderIds,
+        uint256[] calldata _sellOrderIds,
+        uint256[] calldata _prices,
+        uint256[] calldata _amounts
+    ) external onlyManager orderBookExists(_orderBookId) orderBookActive(_orderBookId) {
+        require(
+            _buyOrderIds.length == _sellOrderIds.length && _sellOrderIds.length == _prices.length
+                && _prices.length == _amounts.length,
+            "OrderBookPod: array length mismatch"
+        );
+
+        for (uint256 i = 0; i < _buyOrderIds.length; i++) {
+            _executeTrade(_orderBookId, _buyOrderIds[i], _sellOrderIds[i], _prices[i], _amounts[i]);
+        }
+    }
+
+    // ============ View Functions ============
+
+    function getOrder(uint256 _orderId) external view returns (Order memory) {
+        return orders[_orderId];
+    }
+
+    function getOrderBook(uint256 _orderBookId) external view returns (OrderBook memory) {
+        return orderBooks[_orderBookId];
+    }
+
+    function getOrdersByMaker(address _maker) external view returns (uint256[] memory) {
+        return makerOrders[_maker].values();
+    }
+
+    function getActiveOrdersByOrderBook(uint256 _orderBookId) external view returns (uint256[] memory) {
+        uint256[] memory allOrders = orderBookOrders[_orderBookId].values();
+        uint256 activeCount = 0;
+
+        // Count active orders
+        for (uint256 i = 0; i < allOrders.length; i++) {
+            Order storage order = orders[allOrders[i]];
+            if (order.status == OrderStatus.OPEN || order.status == OrderStatus.PARTIALLY_FILLED) {
+                activeCount++;
+            }
+        }
+
+        // Create result array
+        uint256[] memory activeOrders = new uint256[](activeCount);
+        uint256 index = 0;
+        for (uint256 i = 0; i < allOrders.length; i++) {
+            Order storage order = orders[allOrders[i]];
+            if (order.status == OrderStatus.OPEN || order.status == OrderStatus.PARTIALLY_FILLED) {
+                activeOrders[index] = allOrders[i];
+                index++;
+            }
+        }
+
+        return activeOrders;
+    }
+
+    function getBuyOrders(uint256 _orderBookId) external view returns (uint256[] memory) {
+        uint256[] memory allOrders = orderBookOrders[_orderBookId].values();
+        uint256 buyCount = 0;
+
+        for (uint256 i = 0; i < allOrders.length; i++) {
+            if (orders[allOrders[i]].side == OrderSide.BUY) {
+                buyCount++;
+            }
+        }
+
+        uint256[] memory buyOrders = new uint256[](buyCount);
+        uint256 index = 0;
+        for (uint256 i = 0; i < allOrders.length; i++) {
+            if (orders[allOrders[i]].side == OrderSide.BUY) {
+                buyOrders[index] = allOrders[i];
+                index++;
+            }
+        }
+
+        return buyOrders;
+    }
+
+    function getSellOrders(uint256 _orderBookId) external view returns (uint256[] memory) {
+        uint256[] memory allOrders = orderBookOrders[_orderBookId].values();
+        uint256 sellCount = 0;
+
+        for (uint256 i = 0; i < allOrders.length; i++) {
+            if (orders[allOrders[i]].side == OrderSide.SELL) {
+                sellCount++;
+            }
+        }
+
+        uint256[] memory sellOrders = new uint256[](sellCount);
+        uint256 index = 0;
+        for (uint256 i = 0; i < allOrders.length; i++) {
+            if (orders[allOrders[i]].side == OrderSide.SELL) {
+                sellOrders[index] = allOrders[i];
+                index++;
+            }
+        }
+
+        return sellOrders;
+    }
+
+    function getBestBuyPrice(uint256 _orderBookId) external view returns (uint256) {
+        uint256[] memory prices = buyPriceLevels[_orderBookId].values();
+        if (prices.length == 0) return 0;
+
+        uint256 bestPrice = prices[0];
+        for (uint256 i = 1; i < prices.length; i++) {
+            if (prices[i] > bestPrice) {
+                bestPrice = prices[i];
+            }
+        }
+        return bestPrice;
+    }
+
+    function getBestSellPrice(uint256 _orderBookId) external view returns (uint256) {
+        uint256[] memory prices = sellPriceLevels[_orderBookId].values();
+        if (prices.length == 0) return 0;
+
+        uint256 bestPrice = prices[0];
+        for (uint256 i = 1; i < prices.length; i++) {
+            if (prices[i] < bestPrice) {
+                bestPrice = prices[i];
+            }
+        }
+        return bestPrice;
+    }
+
+    function getOrderBookDepth(uint256 _orderBookId, uint256 _levels)
+        external
+        view
+        returns (
+            uint256[] memory buyPrices,
+            uint256[] memory buyAmounts,
+            uint256[] memory sellPrices,
+            uint256[] memory sellAmounts
+        )
+    {
+        uint256[] memory allBuyPrices = buyPriceLevels[_orderBookId].values();
+        uint256[] memory allSellPrices = sellPriceLevels[_orderBookId].values();
+
+        // Sort buy prices descending
+        allBuyPrices = _sortDescending(allBuyPrices);
+        // Sort sell prices ascending
+        allSellPrices = _sortAscending(allSellPrices);
+
+        uint256 buyLevels = allBuyPrices.length < _levels ? allBuyPrices.length : _levels;
+        uint256 sellLevels = allSellPrices.length < _levels ? allSellPrices.length : _levels;
+
+        buyPrices = new uint256[](buyLevels);
+        buyAmounts = new uint256[](buyLevels);
+        sellPrices = new uint256[](sellLevels);
+        sellAmounts = new uint256[](sellLevels);
+
+        for (uint256 i = 0; i < buyLevels; i++) {
+            buyPrices[i] = allBuyPrices[i];
+            buyAmounts[i] = _getTotalAmountAtPrice(_orderBookId, allBuyPrices[i], OrderSide.BUY);
+        }
+
+        for (uint256 i = 0; i < sellLevels; i++) {
+            sellPrices[i] = allSellPrices[i];
+            sellAmounts[i] = _getTotalAmountAtPrice(_orderBookId, allSellPrices[i], OrderSide.SELL);
+        }
+    }
+
+    // ============ Internal Functions ============
+
+    function _createOrder(
+        uint256 _orderBookId,
+        address _maker,
+        OrderSide _side,
+        OrderType _orderType,
+        uint256 _price,
+        uint256 _amount
+    ) internal returns (uint256 orderId) {
+        orderId = orderIdCounter++;
+
+        orders[orderId] = Order({
+            orderId: orderId,
+            orderBookId: _orderBookId,
+            maker: _maker,
+            side: _side,
+            orderType: _orderType,
+            price: _price,
+            amount: _amount,
+            filledAmount: 0,
+            status: OrderStatus.OPEN,
+            timestamp: block.timestamp
+        });
+
+        makerOrders[_maker].add(orderId);
+        orderBookOrders[_orderBookId].add(orderId);
+
+        emit OrderPlaced(orderId, _orderBookId, _maker, _side, _orderType, _price, _amount);
+    }
+
+    function _matchOrder(uint256 _orderId) internal {
+        Order storage order = orders[_orderId];
+
+        if (order.side == OrderSide.BUY) {
+            _matchBuyOrder(_orderId);
         } else {
-            _matchSell(orderId, outcomeOrderBook);
+            _matchSellOrder(_orderId);
         }
     }
 
-    function _matchBuy(uint256 buyOrderId, OutcomeOrderBook storage book) internal {
-        Order storage buyOrder = orders[buyOrderId];
+    function _matchBuyOrder(uint256 _buyOrderId) internal {
+        Order storage buyOrder = orders[_buyOrderId];
+        uint256[] memory sellPrices = sellPriceLevels[buyOrder.orderBookId].values();
+        sellPrices = _sortAscending(sellPrices);
 
-        for (uint256 i = 0; i < book.sellPriceLevels.length && buyOrder.remainingAmount > 0; i++) {
-            uint256 sellPrice = book.sellPriceLevels[i];
-            if (sellPrice > buyOrder.price) break;
+        for (uint256 i = 0; i < sellPrices.length && buyOrder.filledAmount < buyOrder.amount; i++) {
+            uint256 sellPrice = sellPrices[i];
 
-            uint256[] storage sellOrders = book.sellOrdersByPrice[sellPrice];
-            for (uint256 j = 0; j < sellOrders.length && buyOrder.remainingAmount > 0; j++) {
-                uint256 sellOrderId = sellOrders[j];
+            // For limit orders, only match if price is acceptable
+            if (buyOrder.orderType == OrderType.LIMIT && sellPrice > buyOrder.price) {
+                break;
+            }
+
+            uint256[] memory sellOrderIds = sellOrdersAtPrice[buyOrder.orderBookId][sellPrice].values();
+
+            for (uint256 j = 0; j < sellOrderIds.length && buyOrder.filledAmount < buyOrder.amount; j++) {
+                uint256 sellOrderId = sellOrderIds[j];
                 Order storage sellOrder = orders[sellOrderId];
-                if (sellOrder.status == OrderStatus.Cancelled || sellOrder.remainingAmount == 0) continue;
-                if (buyOrder.eventId != sellOrder.eventId) {
-                    revert EventMismatch(buyOrder.eventId, sellOrder.eventId);
+
+                if (sellOrder.status != OrderStatus.OPEN && sellOrder.status != OrderStatus.PARTIALLY_FILLED) {
+                    continue;
                 }
-                if (buyOrder.outcomeId != sellOrder.outcomeId) {
-                    revert OutcomeMismatch(buyOrder.outcomeId, sellOrder.outcomeId);
-                }
-                _executeMatch(buyOrderId, sellOrderId);
+
+                uint256 tradeAmount =
+                    _min(buyOrder.amount - buyOrder.filledAmount, sellOrder.amount - sellOrder.filledAmount);
+
+                _executeTrade(buyOrder.orderBookId, _buyOrderId, sellOrderId, sellPrice, tradeAmount);
             }
         }
     }
 
-    function _matchSell(uint256 sellOrderId, OutcomeOrderBook storage book) internal {
-        Order storage sellOrder = orders[sellOrderId];
+    function _matchSellOrder(uint256 _sellOrderId) internal {
+        Order storage sellOrder = orders[_sellOrderId];
+        uint256[] memory buyPrices = buyPriceLevels[sellOrder.orderBookId].values();
+        buyPrices = _sortDescending(buyPrices);
 
-        for (uint256 i = 0; i < book.buyPriceLevels.length && sellOrder.remainingAmount > 0; i++) {
-            uint256 buyPrice = book.buyPriceLevels[i];
-            if (buyPrice < sellOrder.price) break;
+        for (uint256 i = 0; i < buyPrices.length && sellOrder.filledAmount < sellOrder.amount; i++) {
+            uint256 buyPrice = buyPrices[i];
 
-            uint256[] storage buyOrders = book.buyOrdersByPrice[buyPrice];
-            for (uint256 j = 0; j < buyOrders.length && sellOrder.remainingAmount > 0; j++) {
-                uint256 buyOrderId = buyOrders[j];
+            // For limit orders, only match if price is acceptable
+            if (sellOrder.orderType == OrderType.LIMIT && buyPrice < sellOrder.price) {
+                break;
+            }
+
+            uint256[] memory buyOrderIds = buyOrdersAtPrice[sellOrder.orderBookId][buyPrice].values();
+
+            for (uint256 j = 0; j < buyOrderIds.length && sellOrder.filledAmount < sellOrder.amount; j++) {
+                uint256 buyOrderId = buyOrderIds[j];
                 Order storage buyOrder = orders[buyOrderId];
-                if (buyOrder.status == OrderStatus.Cancelled || buyOrder.remainingAmount == 0) continue;
-                if (buyOrder.eventId != sellOrder.eventId) {
-                    revert EventMismatch(buyOrder.eventId, sellOrder.eventId);
+
+                if (buyOrder.status != OrderStatus.OPEN && buyOrder.status != OrderStatus.PARTIALLY_FILLED) {
+                    continue;
                 }
-                if (buyOrder.outcomeId != sellOrder.outcomeId) {
-                    revert OutcomeMismatch(buyOrder.outcomeId, sellOrder.outcomeId);
-                }
-                _executeMatch(buyOrderId, sellOrderId);
+
+                uint256 tradeAmount =
+                    _min(sellOrder.amount - sellOrder.filledAmount, buyOrder.amount - buyOrder.filledAmount);
+
+                _executeTrade(sellOrder.orderBookId, buyOrderId, _sellOrderId, buyPrice, tradeAmount);
             }
         }
     }
 
-    function _executeMatch(uint256 buyOrderId, uint256 sellOrderId) internal {
-        Order storage buyOrder = orders[buyOrderId];
-        Order storage sellOrder = orders[sellOrderId];
+    function _executeTrade(
+        uint256 _orderBookId,
+        uint256 _buyOrderId,
+        uint256 _sellOrderId,
+        uint256 _price,
+        uint256 _amount
+    ) internal {
+        Order storage buyOrder = orders[_buyOrderId];
+        Order storage sellOrder = orders[_sellOrderId];
 
-        uint256 matchAmount =
-            buyOrder.remainingAmount < sellOrder.remainingAmount ? buyOrder.remainingAmount : sellOrder.remainingAmount;
+        // Update filled amounts
+        buyOrder.filledAmount += _amount;
+        sellOrder.filledAmount += _amount;
 
-        uint256 matchPrice = sellOrder.price;
-
-        buyOrder.filledAmount += matchAmount;
-        buyOrder.remainingAmount -= matchAmount;
-        sellOrder.filledAmount += matchAmount;
-        sellOrder.remainingAmount -= matchAmount;
-
-        positions[buyOrder.eventId][buyOrder.outcomeId][buyOrder.user] += matchAmount;
-        if (positions[sellOrder.eventId][sellOrder.outcomeId][sellOrder.user] >= matchAmount) {
-            positions[sellOrder.eventId][sellOrder.outcomeId][sellOrder.user] -= matchAmount;
-        } else {
-            positions[sellOrder.eventId][sellOrder.outcomeId][sellOrder.user] = 0;
-        }
-
-        // Funds and fee settlement handled by funding module (fee rates and paths implemented by funding module)
-        // IFundingPod(fundingPod).settleMatchedOrder(
-        //     buyOrder.user,
-        //     sellOrder.user,
-        //     buyOrder.tokenAddress,
-        //     matchAmount,
-        //     buyOrder.eventId,
-        //     buyOrder.outcomeId
-        // );
-
-        if (buyOrder.remainingAmount == 0) {
-            buyOrder.status = OrderStatus.Filled;
-            _removeFromOrderBook(buyOrderId);
+        // Update order statuses
+        if (buyOrder.filledAmount == buyOrder.amount) {
+            buyOrder.status = OrderStatus.FILLED;
+            _removeOrderFromBook(_buyOrderId);
+            emit OrderFilled(_buyOrderId, buyOrder.filledAmount);
         } else if (buyOrder.filledAmount > 0) {
-            buyOrder.status = OrderStatus.Partial;
+            buyOrder.status = OrderStatus.PARTIALLY_FILLED;
+            emit OrderPartiallyFilled(_buyOrderId, buyOrder.filledAmount, buyOrder.amount - buyOrder.filledAmount);
         }
 
-        if (sellOrder.remainingAmount == 0) {
-            sellOrder.status = OrderStatus.Filled;
-            _removeFromOrderBook(sellOrderId);
+        if (sellOrder.filledAmount == sellOrder.amount) {
+            sellOrder.status = OrderStatus.FILLED;
+            _removeOrderFromBook(_sellOrderId);
+            emit OrderFilled(_sellOrderId, sellOrder.filledAmount);
         } else if (sellOrder.filledAmount > 0) {
-            sellOrder.status = OrderStatus.Partial;
+            sellOrder.status = OrderStatus.PARTIALLY_FILLED;
+            emit OrderPartiallyFilled(_sellOrderId, sellOrder.filledAmount, sellOrder.amount - sellOrder.filledAmount);
         }
 
-        emit OrderMatched(buyOrderId, sellOrderId, buyOrder.eventId, buyOrder.outcomeId, matchPrice, matchAmount);
+        // Record trade
+        uint256 tradeId = tradeIdCounter++;
+        trades[tradeId] = Trade({
+            tradeId: tradeId,
+            orderBookId: _orderBookId,
+            buyOrderId: _buyOrderId,
+            sellOrderId: _sellOrderId,
+            buyer: buyOrder.maker,
+            seller: sellOrder.maker,
+            price: _price,
+            amount: _amount,
+            timestamp: block.timestamp
+        });
+
+        orderBookTrades[_orderBookId].add(tradeId);
+
+        emit OrderMatched(
+            tradeId, _orderBookId, _buyOrderId, _sellOrderId, buyOrder.maker, sellOrder.maker, _price, _amount
+        );
+
+        // TODO: Call EventPod to update shares
+        // IEventPod(eventPod).updateSharesAfterTrade(...)
     }
 
-    // ------------------------------------------------------------
-    // Internal: orderbook operations
-    // ------------------------------------------------------------
-    function _addToOrderBook(uint256 orderId) internal {
-        Order storage order = orders[orderId];
-        EventOrderBook storage eventOrderBook = eventOrderBooks[order.eventId];
-        OutcomeOrderBook storage outcomeOrderBook = eventOrderBook.outcomeOrderBooks[order.outcomeId];
+    function _cancelOrder(uint256 _orderId) internal {
+        Order storage order = orders[_orderId];
+        order.status = OrderStatus.CANCELLED;
 
-        if (order.side == OrderSide.Buy) {
-            if (outcomeOrderBook.buyOrdersByPrice[order.price].length == 0) {
-                _insertBuyPrice(outcomeOrderBook, order.price);
-            }
-            outcomeOrderBook.buyOrdersByPrice[order.price].push(orderId);
+        _removeOrderFromBook(_orderId);
+
+        emit OrderCancelled(_orderId, order.maker);
+    }
+
+    function _addOrderToBook(uint256 _orderId) internal {
+        Order storage order = orders[_orderId];
+
+        if (order.side == OrderSide.BUY) {
+            buyPriceLevels[order.orderBookId].add(order.price);
+            buyOrdersAtPrice[order.orderBookId][order.price].add(_orderId);
+            orderBooks[order.orderBookId].totalBuyVolume += (order.amount - order.filledAmount);
         } else {
-            if (outcomeOrderBook.sellOrdersByPrice[order.price].length == 0) {
-                _insertSellPrice(outcomeOrderBook, order.price);
-            }
-            outcomeOrderBook.sellOrdersByPrice[order.price].push(orderId);
+            sellPriceLevels[order.orderBookId].add(order.price);
+            sellOrdersAtPrice[order.orderBookId][order.price].add(_orderId);
+            orderBooks[order.orderBookId].totalSellVolume += (order.amount - order.filledAmount);
         }
     }
 
-    function _removeFromOrderBook(uint256 orderId) internal {
-        Order storage order = orders[orderId];
-        EventOrderBook storage eventOrderBook = eventOrderBooks[order.eventId];
-        OutcomeOrderBook storage outcomeOrderBook = eventOrderBook.outcomeOrderBooks[order.outcomeId];
+    function _removeOrderFromBook(uint256 _orderId) internal {
+        Order storage order = orders[_orderId];
 
-        if (order.side == OrderSide.Buy) {
-            uint256[] storage priceOrders = outcomeOrderBook.buyOrdersByPrice[order.price];
-            _removeFromArray(priceOrders, orderId);
-            if (priceOrders.length == 0) {
-                _removeBuyPrice(outcomeOrderBook, order.price);
+        if (order.side == OrderSide.BUY) {
+            buyOrdersAtPrice[order.orderBookId][order.price].remove(_orderId);
+            if (buyOrdersAtPrice[order.orderBookId][order.price].length() == 0) {
+                buyPriceLevels[order.orderBookId].remove(order.price);
+            }
+            uint256 remainingAmount = order.amount - order.filledAmount;
+            if (orderBooks[order.orderBookId].totalBuyVolume >= remainingAmount) {
+                orderBooks[order.orderBookId].totalBuyVolume -= remainingAmount;
             }
         } else {
-            uint256[] storage priceOrders = outcomeOrderBook.sellOrdersByPrice[order.price];
-            _removeFromArray(priceOrders, orderId);
-            if (priceOrders.length == 0) {
-                _removeSellPrice(outcomeOrderBook, order.price);
+            sellOrdersAtPrice[order.orderBookId][order.price].remove(_orderId);
+            if (sellOrdersAtPrice[order.orderBookId][order.price].length() == 0) {
+                sellPriceLevels[order.orderBookId].remove(order.price);
+            }
+            uint256 remainingAmount = order.amount - order.filledAmount;
+            if (orderBooks[order.orderBookId].totalSellVolume >= remainingAmount) {
+                orderBooks[order.orderBookId].totalSellVolume -= remainingAmount;
             }
         }
     }
 
-    function _insertBuyPrice(OutcomeOrderBook storage orderBook, uint256 price) internal {
-        uint256 i = 0;
-        while (i < orderBook.buyPriceLevels.length && orderBook.buyPriceLevels[i] > price) {
-            i++;
+    function _getTotalAmountAtPrice(uint256 _orderBookId, uint256 _price, OrderSide _side)
+        internal
+        view
+        returns (uint256 total)
+    {
+        uint256[] memory orderIds;
+        if (_side == OrderSide.BUY) {
+            orderIds = buyOrdersAtPrice[_orderBookId][_price].values();
+        } else {
+            orderIds = sellOrdersAtPrice[_orderBookId][_price].values();
         }
-        if (i < orderBook.buyPriceLevels.length && orderBook.buyPriceLevels[i] == price) return;
 
-        orderBook.buyPriceLevels.push(0);
-        for (uint256 j = orderBook.buyPriceLevels.length - 1; j > i; j--) {
-            orderBook.buyPriceLevels[j] = orderBook.buyPriceLevels[j - 1];
-        }
-        orderBook.buyPriceLevels[i] = price;
-    }
-
-    function _insertSellPrice(OutcomeOrderBook storage orderBook, uint256 price) internal {
-        uint256 i = 0;
-        while (i < orderBook.sellPriceLevels.length && orderBook.sellPriceLevels[i] < price) {
-            i++;
-        }
-        if (i < orderBook.sellPriceLevels.length && orderBook.sellPriceLevels[i] == price) return;
-
-        orderBook.sellPriceLevels.push(0);
-        for (uint256 j = orderBook.sellPriceLevels.length - 1; j > i; j--) {
-            orderBook.sellPriceLevels[j] = orderBook.sellPriceLevels[j - 1];
-        }
-        orderBook.sellPriceLevels[i] = price;
-    }
-
-    function _removeBuyPrice(OutcomeOrderBook storage orderBook, uint256 price) internal {
-        for (uint256 i = 0; i < orderBook.buyPriceLevels.length; i++) {
-            if (orderBook.buyPriceLevels[i] == price) {
-                for (uint256 j = i; j < orderBook.buyPriceLevels.length - 1; j++) {
-                    orderBook.buyPriceLevels[j] = orderBook.buyPriceLevels[j + 1];
-                }
-                orderBook.buyPriceLevels.pop();
-                break;
-            }
-        }
-    }
-
-    function _removeSellPrice(OutcomeOrderBook storage orderBook, uint256 price) internal {
-        for (uint256 i = 0; i < orderBook.sellPriceLevels.length; i++) {
-            if (orderBook.sellPriceLevels[i] == price) {
-                for (uint256 j = i; j < orderBook.sellPriceLevels.length - 1; j++) {
-                    orderBook.sellPriceLevels[j] = orderBook.sellPriceLevels[j + 1];
-                }
-                orderBook.sellPriceLevels.pop();
-                break;
-            }
-        }
-    }
-
-    function _removeFromArray(uint256[] storage array, uint256 value) internal {
-        for (uint256 i = 0; i < array.length; i++) {
-            if (array[i] == value) {
-                array[i] = array[array.length - 1];
-                array.pop();
-                break;
-            }
-        }
-    }
-
-    function _totalAtPrice(uint256[] storage orderIds) internal view returns (uint256 total) {
         for (uint256 i = 0; i < orderIds.length; i++) {
             Order storage order = orders[orderIds[i]];
-            if (order.status == OrderStatus.Pending || order.status == OrderStatus.Partial) {
-                total += order.remainingAmount;
+            if (order.status == OrderStatus.OPEN || order.status == OrderStatus.PARTIALLY_FILLED) {
+                total += (order.amount - order.filledAmount);
             }
         }
     }
 
-    // ------------------------------------------------------------
-    // Internal: cancel & settle orders
-    // ------------------------------------------------------------
-    function _cancelAllPendingOrders(uint256 eventId) internal {
-        EventOrderBook storage eventOrderBook = eventOrderBooks[eventId];
-
-        for (uint256 i = 0; i < eventOrderBook.supportedOutcomes.length; i++) {
-            uint256 outcomeId = eventOrderBook.supportedOutcomes[i];
-            OutcomeOrderBook storage outcomeOrderBook = eventOrderBook.outcomeOrderBooks[outcomeId];
-            _cancelMarketOrders(outcomeOrderBook);
-        }
-    }
-
-    function _cancelMarketOrders(OutcomeOrderBook storage marketOrderBook) internal {
-        for (uint256 i = 0; i < marketOrderBook.buyPriceLevels.length; i++) {
-            uint256 price = marketOrderBook.buyPriceLevels[i];
-            uint256[] storage ids = marketOrderBook.buyOrdersByPrice[price];
-            for (uint256 j = 0; j < ids.length; j++) {
-                Order storage order = orders[ids[j]];
-                if (order.status == OrderStatus.Pending || order.status == OrderStatus.Partial) {
-                    order.status = OrderStatus.Cancelled;
-                    // 资金模块：批量撤单解锁资金（由资金模块实现）
-                    // IFundingPod(fundingPod).unlockOnOrderCancelled(order.user, order.tokenAddress, order.remainingAmount, order.eventId, order.outcomeId);
+    function _sortAscending(uint256[] memory arr) internal pure returns (uint256[] memory) {
+        uint256 n = arr.length;
+        for (uint256 i = 0; i < n; i++) {
+            for (uint256 j = i + 1; j < n; j++) {
+                if (arr[i] > arr[j]) {
+                    (arr[i], arr[j]) = (arr[j], arr[i]);
                 }
             }
         }
+        return arr;
+    }
 
-        for (uint256 i = 0; i < marketOrderBook.sellPriceLevels.length; i++) {
-            uint256 price = marketOrderBook.sellPriceLevels[i];
-            uint256[] storage ids = marketOrderBook.sellOrdersByPrice[price];
-            for (uint256 j = 0; j < ids.length; j++) {
-                Order storage order = orders[ids[j]];
-                if (order.status == OrderStatus.Pending || order.status == OrderStatus.Partial) {
-                    order.status = OrderStatus.Cancelled;
-                    // Funding module: Batch unlock funds for cancelled orders (implemented by funding module)
-                    // IFundingPod(fundingPod).unlockOnOrderCancelled(order.user, order.tokenAddress, order.remainingAmount, order.eventId, order.outcomeId);
+    function _sortDescending(uint256[] memory arr) internal pure returns (uint256[] memory) {
+        uint256 n = arr.length;
+        for (uint256 i = 0; i < n; i++) {
+            for (uint256 j = i + 1; j < n; j++) {
+                if (arr[i] < arr[j]) {
+                    (arr[i], arr[j]) = (arr[j], arr[i]);
                 }
             }
         }
+        return arr;
     }
 
-    // Settle positions (placeholder, awaiting integration with funding module and user registry)
-    function _settlePositions(
-        uint256,
-        /*eventId*/
-        uint256 /*winningOutcomeId*/
-    )
-        internal {
-        // TODO: integrate settlement with FundingPod balances when user registry is available.
+    function _min(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a < b ? a : b;
     }
 }

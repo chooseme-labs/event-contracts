@@ -1,43 +1,34 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.20;
 
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "../../interfaces/event/IOrderBookPod.sol";
 
 abstract contract OrderBookPodStorage is IOrderBookPod {
+    using EnumerableSet for EnumerableSet.UintSet;
+
+    // State variables
+    address public manager;
     address public eventPod;
-    address public fundingPod;
-    address public feeVaultPod;
-    address public orderBookManager;
 
-    mapping(uint256 => bool) public supportedEvents;
-    mapping(uint256 => mapping(uint256 => bool)) public supportedOutcomes;
+    uint256 public orderIdCounter;
+    uint256 public tradeIdCounter;
 
-    uint256 public nextOrderId;
-    mapping(uint256 => Order) public orders;
-    mapping(address => uint256[]) public userOrders;
+    // Mappings
+    mapping(uint256 => Order) public orders; // orderId => Order
+    mapping(uint256 => OrderBook) public orderBooks; // orderBookId => OrderBook
+    mapping(address => EnumerableSet.UintSet) internal makerOrders; // maker => orderIds
+    mapping(uint256 => EnumerableSet.UintSet) internal orderBookOrders; // orderBookId => orderIds
 
-    struct OutcomeOrderBook {
-        mapping(uint256 => uint256[]) buyOrdersByPrice;
-        uint256[] buyPriceLevels;
-        mapping(uint256 => uint256[]) sellOrdersByPrice;
-        uint256[] sellPriceLevels;
-    }
+    // Price depth mappings for efficient order matching
+    mapping(uint256 => EnumerableSet.UintSet) internal buyPriceLevels; // orderBookId => prices (sorted desc)
+    mapping(uint256 => EnumerableSet.UintSet) internal sellPriceLevels; // orderBookId => prices (sorted asc)
+    mapping(uint256 => mapping(uint256 => EnumerableSet.UintSet)) internal buyOrdersAtPrice; // orderBookId => price => orderIds
+    mapping(uint256 => mapping(uint256 => EnumerableSet.UintSet)) internal sellOrdersAtPrice; // orderBookId => price => orderIds
 
-    struct EventOrderBook {
-        mapping(uint256 => OutcomeOrderBook) outcomeOrderBooks;
-        uint256[] supportedOutcomes;
-    }
+    // Trade history
+    mapping(uint256 => Trade) public trades; // tradeId => Trade
+    mapping(uint256 => EnumerableSet.UintSet) internal orderBookTrades; // orderBookId => tradeIds
 
-    mapping(uint256 => EventOrderBook) internal eventOrderBooks;
-
-    mapping(uint256 => mapping(uint256 => mapping(address => uint256)))
-        public positions;
-
-    uint256 public constant TICK_SIZE = 10;
-    uint256 public constant MAX_PRICE = 10000;
-
-    mapping(uint256 => bool) public eventSettled;
-    mapping(uint256 => uint256) public eventResults;
-
-    uint256[50] private __gap;
+    uint256[100] private __gap;
 }

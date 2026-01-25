@@ -25,5 +25,6 @@ ignore = [
   # "**/src/**/*",
 ]
 exclude_lints = [
-  # "unaliased-plain-import",
+  "unaliased-plain-import",
+  # "memory-safe-assembly"
 ]

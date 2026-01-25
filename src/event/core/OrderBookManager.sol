@@ -6,83 +6,68 @@ import "@openzeppelin-upgrades/contracts/access/OwnableUpgradeable.sol";
 import "@openzeppelin-upgrades/contracts/utils/PausableUpgradeable.sol";
 
 import "./OrderBookManagerStorage.sol";
+import "../common/BaseManager.sol";
 import "../../interfaces/event/IOrderBookPod.sol";
 
 contract OrderBookManager is
     Initializable,
     OwnableUpgradeable,
     PausableUpgradeable,
+    BaseManager,
     OrderBookManagerStorage
 {
-    modifier onlyWhitelistedPod(IOrderBookPod pod) {
-        require(podIsWhitelisted[pod], "OrderBookManager: pod not whitelisted");
-        _;
-    }
-
+    /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
-    function initialize(address _initialOwner) external initializer {
-        __Ownable_init(_initialOwner);
+    function initialize() external initializer {
+        __Ownable_init(msg.sender);
         __Pausable_init();
     }
 
-    function registerEventToPod(
-        IOrderBookPod pod,
-        uint256 eventId,
-        uint256[] calldata outcomeIds
-    ) external onlyOwner onlyWhitelistedPod(pod) {
-        require(
-            address(eventIdToPod[eventId]) == address(0),
-            "OrderBookManager: event already registered"
-        );
-        eventIdToPod[eventId] = pod;
-        pod.addEvent(eventId, outcomeIds);
+    // ============ Emergency Functions ============
+
+    function emergencyCancelOrder(address _pod, uint256 _orderId) external onlyOwner onlyPod(_pod) {
+        IOrderBookPod(_pod).cancelOrder(_orderId);
+        emit EmergencyOrderCancelled(_orderId, _pod);
     }
 
-    function placeOrder(
-        uint256 eventId,
-        uint256 outcomeId,
-        IOrderBookPod.OrderSide side,
-        uint256 price,
-        uint256 amount,
-        address tokenAddress
-    ) external whenNotPaused returns (uint256 orderId) {
-        IOrderBookPod pod = eventIdToPod[eventId];
-        require(
-            address(pod) != address(0),
-            "OrderBookManager: event not mapped"
-        );
-        require(podIsWhitelisted[pod], "OrderBookManager: pod not whitelisted");
-        orderId = pod.placeOrder(
-            eventId,
-            outcomeId,
-            side,
-            price,
-            amount,
-            tokenAddress
-        );
+    function emergencyBatchCancelOrders(address _pod, uint256[] calldata _orderIds) external onlyOwner onlyPod(_pod) {
+        IOrderBookPod(_pod).batchCancelOrders(_orderIds);
+        emit BatchOrdersCancelled(_orderIds, _pod);
     }
 
-    function cancelOrder(
-        uint256 eventId,
-        uint256 orderId
-    ) external whenNotPaused {
-        IOrderBookPod pod = eventIdToPod[eventId];
-        require(
-            address(pod) != address(0),
-            "OrderBookManager: event not mapped"
-        );
-        require(podIsWhitelisted[pod], "OrderBookManager: pod not whitelisted");
-        pod.cancelOrder(orderId);
+    // ============ Off-chain Matching Support ============
+
+    function executeMatchedOrders(
+        address _pod,
+        uint256 _orderBookId,
+        uint256[] calldata _buyOrderIds,
+        uint256[] calldata _sellOrderIds,
+        uint256[] calldata _prices,
+        uint256[] calldata _amounts
+    ) external onlyOwner onlyPod(_pod) {
+        IOrderBookPod(_pod).executeMatchedOrders(_orderBookId, _buyOrderIds, _sellOrderIds, _prices, _amounts);
     }
 
-    function addPodToWhitelist(IOrderBookPod pod) external onlyOwner {
-        podIsWhitelisted[pod] = true;
+    // ============ View Functions ============
+
+    function getOrderBookInfo(address _pod, uint256 _orderBookId)
+        external
+        view
+        onlyPod(_pod)
+        returns (IOrderBookPod.OrderBook memory)
+    {
+        return IOrderBookPod(_pod).getOrderBook(_orderBookId);
     }
 
-    function removePodFromWhitelist(IOrderBookPod pod) external onlyOwner {
-        podIsWhitelisted[pod] = false;
+    function getOrderInfo(address _pod, uint256 _orderId)
+        external
+        view
+        onlyPod(_pod)
+        returns (IOrderBookPod.Order memory)
+    {
+        return IOrderBookPod(_pod).getOrder(_orderId);
     }
 }

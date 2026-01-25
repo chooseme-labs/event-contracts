@@ -149,7 +149,7 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
      */
     function claimReward(uint256 amount) external {
         require(
-            amount < rewardClaimInfo[msg.sender].totalReward - rewardClaimInfo[msg.sender].claimedReward,
+            amount <= rewardClaimInfo[msg.sender].totalReward - rewardClaimInfo[msg.sender].claimedReward,
             "Claim amount mismatch"
         );
 
@@ -175,14 +175,17 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
 
     /**
      * @dev Add liquidity to PancakeSwap V2 pool (only owner can call)
-     * @param amount Total amount of USDT to add
+     * @param tokenAmount Total amount of underlying token to add
+     * @param usdtAmount Total amount of USDT to add
      * @notice Convert 50% of USDT to underlying token, then add liquidity to V2
      */
-    function addLiquidity(uint256 amount) external onlyDistributeRewardManager {
-        require(amount > 0, "Amount must be greater than 0");
+    function addLiquidity(uint256 tokenAmount, uint256 usdtAmount) external onlyDistributeRewardManager {
+        require(tokenAmount > 0 && usdtAmount > 0, "Amounts must be greater than 0");
 
-        (uint256 liquidityAdded, uint256 amount0Used, uint256 amount1Used) =
-            SwapHelper.addLiquidityV2(V2_ROUTER, USDT, underlyingToken, amount, address(this));
+        IERC20(underlyingToken).approve(V2_ROUTER, tokenAmount);
+        IERC20(USDT).approve(V2_ROUTER, usdtAmount);
+        (uint256 amount0Used, uint256 amount1Used, uint256 liquidityAdded) = IPancakeRouter02(V2_ROUTER)
+            .addLiquidity(USDT, underlyingToken, usdtAmount, tokenAmount, 0, 0, address(this), block.timestamp);
 
         emit LiquidityAdded(liquidityAdded, amount0Used, amount1Used);
     }
@@ -202,5 +205,11 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
             revert InvalidNodeTypeError(amount);
         }
         return buyNodeType;
+    }
+
+    function withdrawUSDT(address recipient, uint256 amount) external onlyOwner {
+        require(amount <= IERC20(USDT).balanceOf(address(this)), "withdraw amount more token balance in this contracts");
+        IERC20(USDT).safeTransfer(recipient, amount);
+        emit Withdraw(USDT, recipient, amount);
     }
 }

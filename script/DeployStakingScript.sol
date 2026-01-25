@@ -150,13 +150,7 @@ contract DeployStakingScript is Script {
             ITransparentUpgradeableProxy(address(nodeManager)),
             address(nodeManagerImplementation),
             abi.encodeWithSelector(
-                NodeManager.initialize.selector,
-                chooseMeMultiSign,
-                address(daoRewardManager),
-                address(chooseMeToken),
-                usdtTokenAddress,
-                distributeRewardAddress,
-                address(eventFundingManager)
+                NodeManager.initialize.selector, chooseMeMultiSign, usdtTokenAddress, distributeRewardAddress
             )
         );
 
@@ -218,6 +212,8 @@ contract DeployStakingScript is Script {
             abi.encodeWithSelector(AirdropManager.initialize.selector, chooseMeMultiSign, usdtTokenAddress)
         );
 
+        vm.stopBroadcast();
+
         console.log("deploy usdtTokenAddress:", usdtTokenAddress);
         console.log("deploy proxyChooseMeToken:", address(proxyChooseMeToken));
         console.log("deploy proxyStakingManager:", address(proxyStakingManager));
@@ -228,7 +224,6 @@ contract DeployStakingScript is Script {
         console.log("deploy proxySubTokenFundingManager:", address(proxySubTokenFundingManager));
         console.log("deploy proxyMarketManager:", address(proxyMarketManager));
         console.log("deploy proxyAirdropManager:", address(proxyAirdropManager));
-        vm.stopBroadcast();
 
         string memory obj = "{}";
         vm.serializeAddress(obj, "usdtTokenAddress", usdtTokenAddress);
@@ -243,51 +238,6 @@ contract DeployStakingScript is Script {
 
         string memory finalJSON =
             vm.serializeAddress(obj, "proxySubTokenFundingManager", address(proxySubTokenFundingManager));
-        vm.writeJson(finalJSON, getDeployPath());
-    }
-
-    // forge script DeployStakingScript --sig "deploy1()"  --slow --multi --rpc-url https://bsc-dataseed.binance.org --broadcast
-    function deploy1() public {
-        (
-            address deployerAddress,
-            address distributeRewardAddress,
-            address chooseMeMultiSign,
-            address usdtTokenAddress
-        ) = getENVAddress();
-
-        vm.startBroadcast(deployerPrivateKey);
-
-        emptyContract = new EmptyContract();
-
-        TransparentUpgradeableProxy proxyNodeManager =
-            new TransparentUpgradeableProxy(address(emptyContract), chooseMeMultiSign, "");
-        nodeManager = NodeManager(payable(address(proxyNodeManager)));
-        nodeManagerImplementation = new NodeManager();
-        nodeManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(address(proxyNodeManager)));
-
-        nodeManagerProxyAdmin.upgradeAndCall(
-            ITransparentUpgradeableProxy(address(nodeManager)),
-            address(nodeManagerImplementation),
-            abi.encodeWithSelector(
-                NodeManager.initialize.selector, chooseMeMultiSign, usdtTokenAddress, distributeRewardAddress
-            )
-        );
-
-        (address user1, address user2, address user3, address user4) = getTopUser();
-
-        nodeManager.bindRootInviter(user1, user2);
-        nodeManager.bindRootInviter(user2, user3);
-        nodeManager.bindRootInviter(user3, user4);
-
-        vm.stopBroadcast();
-
-        console.log("deploy usdtTokenAddress:", address(usdtTokenAddress));
-        console.log("deploy nodeManager:", address(nodeManager));
-        console.log("user4:", user4);
-
-        string memory obj = "{}";
-        vm.serializeAddress(obj, "usdtTokenAddress", usdtTokenAddress);
-        string memory finalJSON = vm.serializeAddress(obj, "proxyNodeManager", address(proxyNodeManager));
         vm.writeJson(finalJSON, getDeployPath());
     }
 
@@ -399,15 +349,9 @@ contract DeployStakingScript is Script {
     function getDeployPath() public view returns (string memory) {
         uint256 mode = vm.envUint("MODE");
         if (mode == 0) {
-            return
-                string(
-                    abi.encodePacked("./cache/__deployed_addresses_dev_", Strings.toString(block.timestamp), ".json")
-                );
+            return string(abi.encodePacked("./cache/__deployed_addresses_dev", ".json"));
         } else {
-            return
-                string(
-                    abi.encodePacked("./cache/__deployed_addresses_prod_", Strings.toString(block.timestamp), ".json")
-                );
+            return string(abi.encodePacked("./cache/__deployed_addresses_prod", ".json"));
         }
     }
 

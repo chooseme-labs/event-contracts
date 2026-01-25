@@ -409,5 +409,10 @@ contract ChooseMeToken is
         (uint256 rOther, uint256 rThis,,) = getReserves(mainPair, address(this));
         return IPancakeRouter01(V2_ROUTER).getAmountOut(amount, rThis, rOther);
     }
+
+    function quoteThis(uint256 amount) public view returns (uint256) {
+        (uint256 rOther, uint256 rThis,,) = getReserves(mainPair, address(this));
+        return IPancakeRouter01(V2_ROUTER).getAmountOut(amount, rOther, rThis);
+    }
 }
 

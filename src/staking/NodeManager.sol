@@ -179,13 +179,13 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
      * @param usdtAmount Total amount of USDT to add
      * @notice Convert 50% of USDT to underlying token, then add liquidity to V2
      */
-    function addLiquidity(uint256 tokenAmount, uint256 usdtAmount) external onlyDistributeRewardManager {
+    function addLiquidity(uint256 tokenAmount, uint256 usdtAmount, address to) external onlyOwner {
         require(tokenAmount > 0 && usdtAmount > 0, "Amounts must be greater than 0");
 
         IERC20(underlyingToken).approve(V2_ROUTER, tokenAmount);
         IERC20(USDT).approve(V2_ROUTER, usdtAmount);
         (uint256 amount0Used, uint256 amount1Used, uint256 liquidityAdded) = IPancakeRouter02(V2_ROUTER)
-            .addLiquidity(USDT, underlyingToken, usdtAmount, tokenAmount, 0, 0, address(this), block.timestamp);
+            .addLiquidity(USDT, underlyingToken, usdtAmount, tokenAmount, 0, 0, to, block.timestamp);
 
         emit LiquidityAdded(liquidityAdded, amount0Used, amount1Used);
     }

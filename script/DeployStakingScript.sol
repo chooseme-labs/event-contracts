@@ -128,7 +128,7 @@ contract DeployStakingScript is Script, EnvContract {
             address usdtTokenAddress
         ) = getENVAddress();
 
-        (,,, address proxyNodeManagerD,,,,,,) = getENVAddress();
+        (,,, address proxyNodeManagerD,,,,,,) = getAddresses();
 
         vm.startBroadcast(deployerPrivateKey);
 
@@ -140,7 +140,7 @@ contract DeployStakingScript is Script, EnvContract {
         chooseMeTokenImplementation = new ChooseMeToken();
         chooseMeTokenProxyAdmin = ProxyAdmin(getProxyAdminAddress(address(proxyChooseMeToken)));
 
-        TransparentUpgradeableProxy proxyNodeManager = TransparentUpgradeableProxy(proxyNodeManagerD);
+        TransparentUpgradeableProxy proxyNodeManager = TransparentUpgradeableProxy(payable(proxyNodeManagerD));
         nodeManager = NodeManager(payable(address(proxyNodeManager)));
         nodeManagerImplementation = new NodeManager();
         nodeManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(address(proxyNodeManager)));
@@ -284,7 +284,7 @@ contract DeployStakingScript is Script, EnvContract {
         vm.writeJson(finalJSON, getDeployPath());
     }
 
-    // forge script DeployStakingScript --sig "update()"  --slow --multi --rpc-url https://bsc-dataseed.binance.org --broadcast
+    // MODE=1 forge script DeployStakingScript --sig "update()"  --slow --multi --rpc-url https://bsc-dataseed.binance.org --broadcast
     function update() public {
         initContracts();
         getCurPrivateKey();
@@ -356,7 +356,7 @@ contract DeployStakingScript is Script, EnvContract {
             address proxyAirdropManager,
             address proxyMarketManager,
             address proxySubTokenFundingManager
-        ) = getENVAddress();
+        ) = getAddresses();
 
         usdt = TestUSDT(payable(usdtTokenAddress));
         chooseMeToken = ChooseMeToken(payable(proxyChooseMeToken));
@@ -388,15 +388,6 @@ contract DeployStakingScript is Script, EnvContract {
 
         bytes32 adminSlot = vm.load(proxy, ERC1967Utils.ADMIN_SLOT);
         return address(uint160(uint256(adminSlot)));
-    }
-
-    function getDeployPath() public view returns (string memory) {
-        uint256 mode = vm.envUint("MODE");
-        if (mode == 0) {
-            return string(abi.encodePacked("./cache/__deployed_addresses_dev", ".json"));
-        } else {
-            return string(abi.encodePacked("./cache/__deployed_addresses_prod", ".json"));
-        }
     }
 
     function getCurPrivateKey() public returns (uint256) {

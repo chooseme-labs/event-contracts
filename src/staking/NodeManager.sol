@@ -87,7 +87,7 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
      * @param rootInviter Address to be set as root inviter
      * @param user Address of the user for whom the root inviter is being set
      */
-    function bindRootInviter(address rootInviter, address user) external onlyDistributeRewardManager {
+    function bindRootInviter(address rootInviter, address user) external onlyOwner {
         require(rootInviter != address(0) && user != address(0), "Root inviter and user cannot be zero address");
         require(inviters[user] == address(0), "Root inviter already set");
 

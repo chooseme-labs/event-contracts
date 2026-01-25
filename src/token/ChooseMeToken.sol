@@ -38,8 +38,8 @@ contract ChooseMeToken is
     TradeSlippage,
     ChooseMeTokenStorage
 {
-    string private constant NAME = "ChooseMe Coin";
-    string private constant SYMBOL = "CMT";
+    string private constant NAME = "CHO";
+    string private constant SYMBOL = "CHO";
 
     constructor() {
         _disableInitializers();

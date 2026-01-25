@@ -7,57 +7,11 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
-import {IPancakeV2Factory} from "../src/interfaces/staking/pancake/IPancakeV2Factory.sol";
-import {IPancakeV2Router} from "../src/interfaces/staking/pancake/IPancakeV2Router.sol";
-import {IPancakeV2Pair} from "../src/interfaces/staking/pancake/IPancakeV2Pair.sol";
+import "./InitContract.sol";
 
-import {EmptyContract} from "../src/utils/EmptyContract.sol";
-import {ChooseMeToken} from "../src/token/ChooseMeToken.sol";
-import {IChooseMeToken} from "../src/interfaces/token/IChooseMeToken.sol";
-import {DaoRewardManager} from "../src/token/allocation/DaoRewardManager.sol";
-import {FomoTreasureManager} from "../src/token/allocation/FomoTreasureManager.sol";
-import {AirdropManager} from "../src/token/allocation/AirdropManager.sol";
-import {MarketManager} from "../src/token/allocation/MarketManager.sol";
-import {NodeManager} from "../src/staking/NodeManager.sol";
-import {StakingManager} from "../src/staking/StakingManager.sol";
-import {EventFundingManager} from "../src/staking/EventFundingManager.sol";
-import {SubTokenFundingManager} from "../src/staking/SubTokenFundingManager.sol";
+// MODE=1 forge script BroadcastStakingScript --slow --multi --rpc-url https://bsc-dataseed.binance.org --broadcast
 
-interface IPancakeRouter {
-    function addLiquidity(
-        address tokenA,
-        address tokenB,
-        uint256 amountADesired,
-        uint256 amountBDesired,
-        uint256 amountAMin,
-        uint256 amountBMin,
-        address to,
-        uint256 deadline
-    ) external returns (uint256 amountA, uint256 amountB, uint256 liquidity);
-}
-
-contract TestUSDT is ERC20 {
-    constructor() ERC20("TestUSDT", "USDT") {
-        _mint(msg.sender, 10000000 * 10 ** 18);
-    }
-}
-
-// forge script BroadcastStakingScript --slow --multi --rpc-url https://bsc-dataseed.binance.org --broadcast
-
-contract BroadcastStakingScript is Script {
-    ERC20 public usdt;
-    ChooseMeToken public chooseMeToken;
-    NodeManager public nodeManager;
-    StakingManager public stakingManager;
-    DaoRewardManager public daoRewardManager;
-    FomoTreasureManager public fomoTreasureManager;
-    EventFundingManager public eventFundingManager;
-    SubTokenFundingManager public subTokenFundingManager;
-    MarketManager public marketManager;
-    AirdropManager public airdropManager;
-
-    IPancakeRouter public pancakeRouter;
-
+contract BroadcastStakingScript is InitContract {
     uint256 cmtDecimals = 10 ** 6;
     uint256 usdtDecimals = 10 ** 18;
 
@@ -78,65 +32,6 @@ contract BroadcastStakingScript is Script {
         user5PrivateKey = vm.deriveKey(mnemonic, 5);
 
         initContracts();
-
-        // vm.startBroadcast(0xa5ee8193bd7b1482841354a06eb2dd700afa214f45f1d8746578f066a9459629);
-        // (,, uint256 amount) = nodeManager.nodeBuyerInfo(0xCD5434571F95A4f4Cc013A9AE4addbF5281B6652);
-        // console.log("nodeBuyerInfo", amount);
-        // nodeManager.purchaseNode(nodeManager.buyDistributedNode());
-        // vm.stopBroadcast();
-        // console.log("====", nodeManager.inviters(0xCD5434571F95A4f4Cc013A9AE4addbF5281B6652));
-
-        // initChooseMeToken();
-        // transferGasFee(initPoolPrivateKey);
-        transfer();
-        // addLiquidity();
-
-        // distributeNodeRewards(deployerPrivateKey, 0x7f345497612FbA3DFb923b422D67108BB5894EA6, 1000 * cmtDecimals, 0);
-        // createLiquidityProviderReward(
-        //     deployerPrivateKey, 0x7f345497612FbA3DFb923b422D67108BB5894EA6, 1000 * cmtDecimals, 0
-        // );
-
-        // bindRootInviter(0x57Eed9DeFadE3Fd6743aeD4747Da92B5E8A92E6b, 0x53B5D1eFf42b30284f7A04f9448DbC1D96FD8083);
-        // bindRootInviter(0x53B5D1eFf42b30284f7A04f9448DbC1D96FD8083, 0x83Fd53A16eB4076404DAc4eC4102af7DD632b742);
-        // bindRootInviter(0x83Fd53A16eB4076404DAc4eC4102af7DD632b742, 0x9e82E436c3D782d1A8cC41F942FCc6fBc72979b3);
-    }
-
-    function initContracts() internal {
-        string memory deployPath = getDeployPath();
-        string memory json = vm.readFile(deployPath);
-        address usdtTokenAddress = vm.parseJsonAddress(json, ".usdtTokenAddress");
-        address proxyChooseMeToken = vm.parseJsonAddress(json, ".proxyChooseMeToken");
-        address proxyStakingManager = vm.parseJsonAddress(json, ".proxyStakingManager");
-        address proxyNodeManager = vm.parseJsonAddress(json, ".proxyNodeManager");
-        address proxyDaoRewardManager = vm.parseJsonAddress(json, ".proxyDaoRewardManager");
-        address proxyFomoTreasureManager = vm.parseJsonAddress(json, ".proxyFomoTreasureManager");
-        address proxyEventFundingManager = vm.parseJsonAddress(json, ".proxyEventFundingManager");
-        address proxyMarketManager = vm.parseJsonAddress(json, ".proxyMarketManager");
-        address proxyAirdropManager = vm.parseJsonAddress(json, ".proxyAirdropManager");
-        address proxySubTokenFundingManager = vm.parseJsonAddress(json, ".proxySubTokenFundingManager");
-
-        usdt = TestUSDT(payable(usdtTokenAddress));
-        chooseMeToken = ChooseMeToken(payable(proxyChooseMeToken));
-        daoRewardManager = DaoRewardManager(payable(proxyDaoRewardManager));
-        eventFundingManager = EventFundingManager(payable(proxyEventFundingManager));
-        fomoTreasureManager = FomoTreasureManager(payable(proxyFomoTreasureManager));
-        nodeManager = NodeManager(payable(proxyNodeManager));
-        stakingManager = StakingManager(payable(proxyStakingManager));
-        subTokenFundingManager = SubTokenFundingManager(payable(proxySubTokenFundingManager));
-        marketManager = MarketManager(payable(proxyMarketManager));
-        airdropManager = AirdropManager(payable(proxyAirdropManager));
-
-        pancakeRouter = IPancakeRouter(0x10ED43C718714eb63d5aA57B78B54704E256024E); // PancakeSwap Router V2
-        console.log("Contracts initialized");
-    }
-
-    function getDeployPath() public view returns (string memory) {
-        uint256 mode = vm.envUint("MODE");
-        if (mode == 0) {
-            return string(abi.encodePacked("./cache/__deployed_addresses_dev", ".json"));
-        } else {
-            return string(abi.encodePacked("./cache/__deployed_addresses_prod", ".json"));
-        }
     }
 
     function initChooseMeToken() internal {

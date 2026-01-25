@@ -26,7 +26,7 @@ contract TestUSDT is ERC20 {
     }
 }
 
-// forge script DeployStakingScript --slow --multi --rpc-url https://bsc-dataseed.binance.org --broadcast --verify --etherscan-api-key I4C1AKJT8J9KJVCXHZKK317T3XV8IVASRX
+// MODE=1 forge script DeployStakingScript --slow --multi --rpc-url https://bsc-dataseed.binance.org --broadcast --verify --etherscan-api-key I4C1AKJT8J9KJVCXHZKK317T3XV8IVASRX
 // forge verify-contract --rpc-url https://bsc-dataseed.binance.org --etherscan-api-key I4C1AKJT8J9KJVCXHZKK317T3XV8IVASRX 0x97807b490Bb554a910f542693105d65742DaaAc9
 
 contract DeployStakingScript is Script {
@@ -154,6 +154,8 @@ contract DeployStakingScript is Script {
             )
         );
 
+        nodeManager.setConfig(address(chooseMeToken), address(proxyDaoRewardManager), address(proxyEventFundingManager));
+
         stakingManagerProxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(address(stakingManager)),
             address(stakingManagerImplementation),
@@ -238,6 +240,51 @@ contract DeployStakingScript is Script {
 
         string memory finalJSON =
             vm.serializeAddress(obj, "proxySubTokenFundingManager", address(proxySubTokenFundingManager));
+        vm.writeJson(finalJSON, getDeployPath());
+    }
+
+    // MODE=1 forge script DeployStakingScript --sig "deploy1()"  --slow --multi --rpc-url https://bsc-dataseed.binance.org --broadcast
+    function deploy1() public {
+        (
+            address deployerAddress,
+            address distributeRewardAddress,
+            address chooseMeMultiSign,
+            address usdtTokenAddress
+        ) = getENVAddress();
+
+        vm.startBroadcast(deployerPrivateKey);
+
+        emptyContract = new EmptyContract();
+
+        TransparentUpgradeableProxy proxyNodeManager =
+            new TransparentUpgradeableProxy(address(emptyContract), chooseMeMultiSign, "");
+        nodeManager = NodeManager(payable(address(proxyNodeManager)));
+        nodeManagerImplementation = new NodeManager();
+        nodeManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(address(proxyNodeManager)));
+
+        nodeManagerProxyAdmin.upgradeAndCall(
+            ITransparentUpgradeableProxy(address(nodeManager)),
+            address(nodeManagerImplementation),
+            abi.encodeWithSelector(
+                NodeManager.initialize.selector, chooseMeMultiSign, usdtTokenAddress, distributeRewardAddress
+            )
+        );
+
+        (address user1, address user2, address user3, address user4) = getTopUser();
+
+        nodeManager.bindRootInviter(user1, user2);
+        nodeManager.bindRootInviter(user2, user3);
+        nodeManager.bindRootInviter(user3, user4);
+
+        vm.stopBroadcast();
+
+        console.log("deploy usdtTokenAddress:", address(usdtTokenAddress));
+        console.log("deploy nodeManager:", address(nodeManager));
+        console.log("user4:", user4);
+
+        string memory obj = "{}";
+        vm.serializeAddress(obj, "usdtTokenAddress", usdtTokenAddress);
+        string memory finalJSON = vm.serializeAddress(obj, "proxyNodeManager", address(proxyNodeManager));
         vm.writeJson(finalJSON, getDeployPath());
     }
 

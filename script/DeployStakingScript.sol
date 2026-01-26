@@ -284,7 +284,7 @@ contract DeployStakingScript is Script, EnvContract {
         vm.writeJson(finalJSON, getDeployPath());
     }
 
-    // MODE=1 forge script DeployStakingScript --sig "update()"  --slow --multi --rpc-url https://bsc-dataseed.binance.org --broadcast
+    // MODE=1 forge script DeployStakingScript --sig "update()"  --slow --multi --rpc-url https://bsc-dataseed.binance.org --broadcast --verify --etherscan-api-key I4C1AKJT8J9KJVCXHZKK317T3XV8IVASRX
     function update() public {
         initContracts();
         getCurPrivateKey();

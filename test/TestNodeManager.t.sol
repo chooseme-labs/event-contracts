@@ -413,7 +413,7 @@ contract TestNodeManager is Test {
     function testOnlyDistributeRewardManagerCanCallAddLiquidity() public {
         vm.prank(buyer1);
         vm.expectRevert("onlyDistributeRewardManager");
-        nodeManager.addLiquidity(1000 * 10 ** 18, 1600 * 10 ** 6);
+        nodeManager.addLiquidity(1000 * 10 ** 18, 1600 * 10 ** 6, address(daoRewardManager));
     }
 
     // ==================== Edge Cases and Security Tests ====================

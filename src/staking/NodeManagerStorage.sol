@@ -25,5 +25,6 @@ abstract contract NodeManagerStorage is INodeManager {
 
     mapping(address => address) public inviters;
 
+    address public batchCaller;
     uint256[100] private __gap;
 }

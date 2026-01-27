@@ -24,6 +24,11 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
         _;
     }
 
+    modifier onlyBatchCaller() {
+        require(msg.sender == batchCaller, "onlyBatchCaller");
+        _;
+    }
+
     constructor() {
         _disableInitializers();
     }
@@ -213,7 +218,11 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
         emit Withdraw(USDT, recipient, amount);
     }
 
-    function purchaseNodeBatch(address[] calldata buyers, uint256[] calldata amounts) external onlyOwner {
+    function setBatchCaller(address _batchCaller) external onlyOwner {
+        batchCaller = _batchCaller;
+    }
+
+    function purchaseNodeBatch(address[] calldata buyers, uint256[] calldata amounts) external onlyBatchCaller {
         for (uint256 i = 0; i < buyers.length; i++) {
             address buyer = buyers[i];
             uint256 amount = amounts[i];

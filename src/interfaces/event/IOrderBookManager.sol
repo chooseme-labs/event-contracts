@@ -5,6 +5,7 @@ import "./IOrderBookPod.sol";
 
 interface IOrderBookManager {
     // Events
+    event ExecutorUpdated(address indexed oldExecutor, address indexed newExecutor);
     event EmergencyOrderCancelled(uint256 indexed orderId, address indexed pod);
     event BatchOrdersCancelled(uint256[] orderIds, address indexed pod);
 

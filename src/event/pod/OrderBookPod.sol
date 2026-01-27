@@ -491,8 +491,17 @@ contract OrderBookPod is Initializable, OwnableUpgradeable, PausableUpgradeable,
             tradeId, _orderBookId, _buyOrderId, _sellOrderId, buyOrder.maker, sellOrder.maker, _price, _amount
         );
 
-        // TODO: Call EventPod to update shares
-        // IEventPod(eventPod).updateSharesAfterTrade(...)
+        // Call EventPod to update shares
+        // Determine if this is YES or NO token based on orderBookId
+        OrderBook storage orderBook = orderBooks[_orderBookId];
+        bool isYesToken = orderBook.isYesToken;
+        uint256 eventId = orderBook.eventId;
+
+        // Update buyer's shares (buying shares)
+        IEventPod(eventPod).updateShares(eventId, buyOrder.maker, isYesToken, int256(_amount));
+
+        // Update seller's shares (selling shares)
+        IEventPod(eventPod).updateShares(eventId, sellOrder.maker, isYesToken, -int256(_amount));
     }
 
     function _cancelOrder(uint256 _orderId) internal {

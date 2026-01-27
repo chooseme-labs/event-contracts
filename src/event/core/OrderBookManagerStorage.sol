@@ -5,5 +5,7 @@ import "../../interfaces/event/IOrderBookManager.sol";
 import "../../interfaces/event/IOrderBookPod.sol";
 
 abstract contract OrderBookManagerStorage is IOrderBookManager {
-    uint256[100] private __gap;
+    address public executor;
+
+    uint256[99] private __gap;
 }

@@ -12,6 +12,7 @@ import "./EventPodStorage.sol";
 import "../../interfaces/event/IEventPod.sol";
 import "../../interfaces/event/IFundingPod.sol";
 import "../../interfaces/event/IFeeVaultPod.sol";
+import "../../interfaces/event/IOrderBookPod.sol";
 
 contract EventPod is Initializable, OwnableUpgradeable, PausableUpgradeable, EventPodStorage, IEventPod {
     using SafeERC20 for IERC20;
@@ -113,6 +114,12 @@ contract EventPod is Initializable, OwnableUpgradeable, PausableUpgradeable, Eve
         evt.status = EventStatus.ACTIVE;
         activeEventIds.add(eventId);
 
+        // Create OrderBooks for YES and NO tokens
+        if (orderBookPod != address(0)) {
+            IOrderBookPod(orderBookPod).createOrderBook(eventId, true); // YES token orderbook
+            IOrderBookPod(orderBookPod).createOrderBook(eventId, false); // NO token orderbook
+        }
+
         emit EventActivated(eventId);
     }
 
@@ -123,6 +130,14 @@ contract EventPod is Initializable, OwnableUpgradeable, PausableUpgradeable, Eve
 
         evt.status = EventStatus.CANCELLED;
         activeEventIds.remove(eventId);
+
+        // Deactivate OrderBooks
+        if (orderBookPod != address(0)) {
+            uint256 yesOrderBookId = eventId * 10 + 1;
+            uint256 noOrderBookId = eventId * 10 + 2;
+            IOrderBookPod(orderBookPod).deactivateOrderBook(yesOrderBookId);
+            IOrderBookPod(orderBookPod).deactivateOrderBook(noOrderBookId);
+        }
 
         emit EventCancelled(eventId);
     }
@@ -339,6 +354,14 @@ contract EventPod is Initializable, OwnableUpgradeable, PausableUpgradeable, Eve
         evt.status = EventStatus.SETTLED;
         evt.result = result;
         evt.settledAt = block.timestamp;
+
+        // Deactivate OrderBooks
+        if (orderBookPod != address(0)) {
+            uint256 yesOrderBookId = eventId * 10 + 1;
+            uint256 noOrderBookId = eventId * 10 + 2;
+            IOrderBookPod(orderBookPod).deactivateOrderBook(yesOrderBookId);
+            IOrderBookPod(orderBookPod).deactivateOrderBook(noOrderBookId);
+        }
 
         // Calculate and transfer fees
         uint256 feeAmount = 0;

@@ -16,6 +16,12 @@ contract OrderBookManager is
     BaseManager,
     OrderBookManagerStorage
 {
+    // ============ Modifiers ============
+    modifier onlyExecutor() {
+        require(msg.sender == executor, "OrderBookManager: caller is not executor");
+        _;
+    }
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -26,14 +32,27 @@ contract OrderBookManager is
         __Pausable_init();
     }
 
+    // ============ Admin Functions ============
+
+    function setExecutor(address _executor) external onlyOwner {
+        require(_executor != address(0), "OrderBookManager: invalid executor address");
+        address oldExecutor = executor;
+        executor = _executor;
+        emit ExecutorUpdated(oldExecutor, _executor);
+    }
+
     // ============ Emergency Functions ============
 
-    function emergencyCancelOrder(address _pod, uint256 _orderId) external onlyOwner onlyPod(_pod) {
+    function emergencyCancelOrder(address _pod, uint256 _orderId) external onlyExecutor onlyPod(_pod) {
         IOrderBookPod(_pod).cancelOrder(_orderId);
         emit EmergencyOrderCancelled(_orderId, _pod);
     }
 
-    function emergencyBatchCancelOrders(address _pod, uint256[] calldata _orderIds) external onlyOwner onlyPod(_pod) {
+    function emergencyBatchCancelOrders(address _pod, uint256[] calldata _orderIds)
+        external
+        onlyExecutor
+        onlyPod(_pod)
+    {
         IOrderBookPod(_pod).batchCancelOrders(_orderIds);
         emit BatchOrdersCancelled(_orderIds, _pod);
     }
@@ -47,7 +66,7 @@ contract OrderBookManager is
         uint256[] calldata _sellOrderIds,
         uint256[] calldata _prices,
         uint256[] calldata _amounts
-    ) external onlyOwner onlyPod(_pod) {
+    ) external onlyExecutor onlyPod(_pod) {
         IOrderBookPod(_pod).executeMatchedOrders(_orderBookId, _buyOrderIds, _sellOrderIds, _prices, _amounts);
     }
 

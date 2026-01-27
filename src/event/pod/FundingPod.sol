@@ -150,7 +150,12 @@ contract FundingPod is Initializable, OwnableUpgradeable, PausableUpgradeable, F
         whenNotPaused
         onlySupportedToken(token)
     {
-        require(tokenBalances[token] + amount >= getTokenBalance(token), "Invalid receive amount");
+        if (token == ETHAddress) {
+            if (msg.value != amount) revert InvalidAmount();
+        } else {
+            IERC20(token).safeTransferFrom(eventPod, address(this), amount);
+        }
+
         tokenBalances[token] += amount;
         userTokenBalances[user][token] += amount;
 

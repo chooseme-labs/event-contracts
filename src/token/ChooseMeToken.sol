@@ -45,6 +45,11 @@ contract ChooseMeToken is
         _disableInitializers();
     }
 
+    modifier onlyOperator() {
+        require(msg.sender == operator, "ChooseMeToken: caller is not the operator");
+        _;
+    }
+
     modifier onlyStakingManager() {
         require(
             msg.sender == stakingManager, "ChooseMeToken onlyStakingManager: Only StakingManager can call this function"
@@ -70,6 +75,7 @@ contract ChooseMeToken is
         __ERC20Burnable_init();
         __Ownable_init(_owner);
         _transferOwnership(_owner);
+        operator = _owner;
         stakingManager = _stakingManager;
 
         USDT = _usdt;
@@ -250,7 +256,7 @@ contract ChooseMeToken is
      * @dev Add addresses to whitelist (exempt from trading fees)
      * @param _address Array of addresses to add to whitelist
      */
-    function addWhitelist(address[] memory _address) external onlyOwner {
+    function addWhitelist(address[] memory _address) external onlyOperator {
         for (uint256 i = 0; i < _address.length; i++) {
             EnumerableSet.add(whiteList, _address[i]);
         }
@@ -260,7 +266,7 @@ contract ChooseMeToken is
      * @dev Remove addresses from whitelist
      * @param _address Array of addresses to remove from whitelist
      */
-    function removeWhitelist(address[] memory _address) external onlyOwner {
+    function removeWhitelist(address[] memory _address) external onlyOperator {
         for (uint256 i = 0; i < _address.length; i++) {
             EnumerableSet.remove(whiteList, _address[i]);
         }
@@ -287,7 +293,7 @@ contract ChooseMeToken is
      * @dev Set DAO reward pool address
      * @param _stakingManager Staking manager address
      */
-    function setStakingManager(address _stakingManager) external onlyOwner {
+    function setStakingManager(address _stakingManager) external onlyOperator {
         stakingManager = _stakingManager;
         emit SetStakingManager(_stakingManager);
     }
@@ -296,7 +302,7 @@ contract ChooseMeToken is
      * @dev Set trading fee percentages (in basis points, 100 = 1%)
      * @param _tradeFee Struct containing all trading fee percentages
      */
-    function setTradeFee(ChooseMeTradeFee memory _tradeFee) external onlyOwner {
+    function setTradeFee(ChooseMeTradeFee memory _tradeFee) external onlyOperator {
         tradeFee = _tradeFee;
     }
 
@@ -304,7 +310,7 @@ contract ChooseMeToken is
      * @dev Set profit fee percentages (in basis points, 100 = 1%)
      * @param _profitFee Struct containing all profit fee percentages
      */
-    function setProfitFee(ChooseMeProfitFee memory _profitFee) external onlyOwner {
+    function setProfitFee(ChooseMeProfitFee memory _profitFee) external onlyOperator {
         profitFee = _profitFee;
     }
 
@@ -316,7 +322,7 @@ contract ChooseMeToken is
         ChooseMePool memory _pool,
         address[] memory _marketingDevelopmentPools,
         address[] memory _ecosystemPools
-    ) external onlyOwner {
+    ) external onlyOperator {
         _beforeAllocation();
         _beforePoolAddress(_pool);
         cmPool = _pool;
@@ -333,7 +339,7 @@ contract ChooseMeToken is
      * @dev Execute token pool allocation, minting tokens to each pool according to predefined ratios
      * @notice Can only be executed once. Allocation ratios: Node Pool 20%, DAO Reward 60%, Airdrop 6%, Tech Rewards 5%, Ecosystem 4%, Founding Strategy 2%, Marketing Development 3%
      */
-    function poolAllocate() external onlyOwner {
+    function poolAllocate() external onlyOperator {
         _beforeAllocation();
         _mint(cmPool.nodePool, (MaxTotalSupply * 20) / 100); // 20% of total supply
         _mint(cmPool.daoRewardPool, (MaxTotalSupply * 60) / 100); // 60% of total supply
@@ -353,6 +359,15 @@ contract ChooseMeToken is
             _mint(marketingPoolsArray[index], marketingDevelopmentPoolEvery);
         }
         isAllocation = true;
+    }
+
+    /**
+     * @dev Set the operator address (only owner can call)
+     * @param _operator New operator address
+     */
+    function setOperator(address _operator) external onlyOwner {
+        require(_operator != address(0), "ChooseMeToken: operator cannot be zero address");
+        operator = _operator;
     }
 
     /**

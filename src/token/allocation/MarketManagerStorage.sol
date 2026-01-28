@@ -7,6 +7,7 @@ import "../../interfaces/token/IMarketManager.sol";
 
 abstract contract MarketManagerStorage is IMarketManager {
     address public token;
+    address public operator;
 
     // Authorized callers that can trigger token airdrops to compensate new user losses in prediction markets
     EnumerableSet.AddressSet internal authorizedCallers;

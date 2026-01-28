@@ -23,6 +23,11 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
         _disableInitializers();
     }
 
+    modifier onlyOperator() {
+        require(msg.sender == operator, "StakingManager: caller is not the operator");
+        _;
+    }
+
     modifier onlyStakingOperatorManager() {
         require(msg.sender == address(stakingOperatorManager), "onlyRewardDistributionManager");
         _;
@@ -52,6 +57,7 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
         address _subTokenFundingManager
     ) public initializer {
         __Ownable_init(initialOwner);
+        operator = initialOwner;
         underlyingToken = _underlyingToken;
         USDT = _usdt;
         stakingOperatorManager = _stakingOperatorManager;
@@ -61,8 +67,17 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
         subTokenFundingManager = _subTokenFundingManager;
     }
 
-    function setUnderlyingToken(address _underlyingToken) external onlyOwner {
+    function setUnderlyingToken(address _underlyingToken) external onlyOperator {
         underlyingToken = _underlyingToken;
+    }
+
+    /**
+     * @dev Set the operator address (only owner can call)
+     * @param _operator New operator address
+     */
+    function setOperator(address _operator) external onlyOwner {
+        require(_operator != address(0), "StakingManager: operator cannot be zero address");
+        operator = _operator;
     }
 
     /**

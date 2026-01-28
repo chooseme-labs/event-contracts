@@ -10,6 +10,7 @@ abstract contract SubTokenFundingManagerStorage is ISubTokenFundingManager {
     address public subToken;
 
     address public operatorManager;
+    address public operator;
 
     uint256[100] private __gap;
 }

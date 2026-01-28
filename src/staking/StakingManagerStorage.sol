@@ -35,6 +35,7 @@ abstract contract StakingManagerStorage is IStakingManager {
     address public underlyingToken;
     address public stakingOperatorManager;
     address public subTokenFundingManager;
+    address public operator;
 
     mapping(address => uint256) public lpStakingRound;
     mapping(address => mapping(uint256 => LiquidityProviderInfo)) public currentLiquidityProvider;

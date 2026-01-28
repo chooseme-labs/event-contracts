@@ -18,6 +18,11 @@ contract MarketManager is Initializable, OwnableUpgradeable, PausableUpgradeable
         _disableInitializers();
     }
 
+    modifier onlyOperator() {
+        require(msg.sender == operator, "MarketManager: caller is not the operator");
+        _;
+    }
+
     modifier onAuthorizedCaller() {
         require(authorizedCallers.contains(msg.sender), "MarketManager: caller is not authorized");
         _;
@@ -30,6 +35,7 @@ contract MarketManager is Initializable, OwnableUpgradeable, PausableUpgradeable
      */
     function initialize(address initialOwner, address _token) public initializer {
         __Ownable_init(initialOwner);
+        operator = initialOwner;
         token = _token;
     }
 
@@ -37,8 +43,25 @@ contract MarketManager is Initializable, OwnableUpgradeable, PausableUpgradeable
      * @dev Add an authorized caller
      * @param caller Address to be authorized
      */
-    function addAuthorizedCaller(address caller) external onlyOwner {
+    function addAuthorizedCaller(address caller) external onlyOperator {
         authorizedCallers.add(caller);
+    }
+
+    /**
+     * @dev Remove an authorized caller
+     * @param caller Address to be removed from authorization
+     */
+    function removeAuthorizedCaller(address caller) external onlyOperator {
+        authorizedCallers.remove(caller);
+    }
+
+    /**
+     * @dev Set the operator address (only owner can call)
+     * @param _operator New operator address
+     */
+    function setOperator(address _operator) external onlyOwner {
+        require(_operator != address(0), "MarketManager: operator cannot be zero address");
+        operator = _operator;
     }
 
     /**

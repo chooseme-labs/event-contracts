@@ -7,13 +7,18 @@ import "@openzeppelin-upgrades/contracts/utils/PausableUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { FomoTreasureManagerStorage } from "./FomoTreasureManagerStorage.sol";
+import {FomoTreasureManagerStorage} from "./FomoTreasureManagerStorage.sol";
 
 contract FomoTreasureManager is Initializable, OwnableUpgradeable, PausableUpgradeable, FomoTreasureManagerStorage {
     using SafeERC20 for IERC20;
 
-    constructor(){
+    constructor() {
         _disableInitializers();
+    }
+
+    modifier onlyOperator() {
+        require(msg.sender == operator, "FomoTreasureManager: caller is not the operator");
+        _;
     }
 
     /**
@@ -21,11 +26,7 @@ contract FomoTreasureManager is Initializable, OwnableUpgradeable, PausableUpgra
      */
     receive() external payable {
         FundingBalance[NativeTokenAddress] += msg.value;
-        emit Deposit(
-            NativeTokenAddress,
-            msg.sender,
-            msg.value
-        );
+        emit Deposit(NativeTokenAddress, msg.sender, msg.value);
     }
 
     /**
@@ -33,23 +34,33 @@ contract FomoTreasureManager is Initializable, OwnableUpgradeable, PausableUpgra
      * @param initialOwner Initial owner address
      * @param _underlyingToken Underlying token address (USDT)
      */
-    function initialize(address initialOwner,address _underlyingToken) public initializer  {
+    function initialize(address initialOwner, address _underlyingToken) public initializer {
         __Ownable_init(initialOwner);
+        operator = initialOwner;
         underlyingToken = _underlyingToken;
     }
 
     /**
-     * @dev Pause the contract (only owner can call)
+     * @dev Pause the contract (only operator can call)
      */
-    function pause() external onlyOwner {
+    function pause() external onlyOperator {
         _pause();
     }
 
     /**
-     * @dev Unpause the contract (only owner can call)
+     * @dev Unpause the contract (only operator can call)
      */
-    function unpause() external onlyOwner {
+    function unpause() external onlyOperator {
         _unpause();
+    }
+
+    /**
+     * @dev Set the operator address (only owner can call)
+     * @param _operator New operator address
+     */
+    function setOperator(address _operator) external onlyOwner {
+        require(_operator != address(0), "FomoTreasureManager: operator cannot be zero address");
+        operator = _operator;
     }
 
     /**
@@ -58,11 +69,7 @@ contract FomoTreasureManager is Initializable, OwnableUpgradeable, PausableUpgra
      */
     function deposit() external payable whenNotPaused returns (bool) {
         FundingBalance[NativeTokenAddress] += msg.value;
-        emit Deposit(
-            NativeTokenAddress,
-            msg.sender,
-            msg.value
-        );
+        emit Deposit(NativeTokenAddress, msg.sender, msg.value);
         return true;
     }
 
@@ -74,11 +81,7 @@ contract FomoTreasureManager is Initializable, OwnableUpgradeable, PausableUpgra
     function depositErc20(uint256 amount) external whenNotPaused returns (bool) {
         IERC20(underlyingToken).safeTransferFrom(msg.sender, address(this), amount);
         FundingBalance[underlyingToken] += amount;
-        emit Deposit(
-            underlyingToken,
-            msg.sender,
-            amount
-        );
+        emit Deposit(underlyingToken, msg.sender, amount);
         return true;
     }
 
@@ -89,18 +92,16 @@ contract FomoTreasureManager is Initializable, OwnableUpgradeable, PausableUpgra
      * @return Whether the operation was successful
      */
     function withdraw(address payable withdrawAddress, uint256 amount) external payable whenNotPaused returns (bool) {
-        require(address(this).balance >= amount, "FomoTreasureManager withdraw: insufficient native token balance in contract");
+        require(
+            address(this).balance >= amount,
+            "FomoTreasureManager withdraw: insufficient native token balance in contract"
+        );
         FundingBalance[NativeTokenAddress] -= amount;
-        (bool success, ) = withdrawAddress.call{value: amount}("");
+        (bool success,) = withdrawAddress.call{value: amount}("");
         if (!success) {
             return false;
         }
-        emit Withdraw(
-            NativeTokenAddress,
-            msg.sender,
-            withdrawAddress,
-            amount
-        );
+        emit Withdraw(NativeTokenAddress, msg.sender, withdrawAddress, amount);
         return true;
     }
 
@@ -110,18 +111,15 @@ contract FomoTreasureManager is Initializable, OwnableUpgradeable, PausableUpgra
      * @param amount Withdrawal amount
      * @return Whether the operation was successful
      */
-    function withdrawErc20(address recipient, uint256 amount) external whenNotPaused returns (bool){
-        require(amount <= _tokenBalance(), "FomoTreasureManager: withdraw erc20 amount more token balance in this contracts");
+    function withdrawErc20(address recipient, uint256 amount) external whenNotPaused returns (bool) {
+        require(
+            amount <= _tokenBalance(), "FomoTreasureManager: withdraw erc20 amount more token balance in this contracts"
+        );
         FundingBalance[underlyingToken] -= amount;
 
         IERC20(underlyingToken).safeTransfer(recipient, amount);
 
-        emit Withdraw(
-            underlyingToken,
-            msg.sender,
-            recipient,
-            amount
-        );
+        emit Withdraw(underlyingToken, msg.sender, recipient, amount);
         return true;
     }
 

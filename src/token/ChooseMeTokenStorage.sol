@@ -14,6 +14,7 @@ abstract contract ChooseMeTokenStorage is IChooseMeToken {
     uint256 public _lpBurnedTokens;
 
     address public stakingManager;
+    address public operator;
 
     address public currencyDistributor;
 

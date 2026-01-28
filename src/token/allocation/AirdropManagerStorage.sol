@@ -7,6 +7,7 @@ import "../../interfaces/token/IAirdropManager.sol";
 
 abstract contract AirdropManagerStorage is IAirdropManager {
     address public token;
+    address public operator;
 
     // Authorized callers that can trigger token airdrops to compensate new user losses in prediction markets
     EnumerableSet.AddressSet internal authorizedCallers;

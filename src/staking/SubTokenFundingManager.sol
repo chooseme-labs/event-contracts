@@ -22,6 +22,11 @@ contract SubTokenFundingManager is
         _disableInitializers();
     }
 
+    modifier onlyOperator() {
+        require(msg.sender == operator, "SubTokenFundingManager: caller is not the operator");
+        _;
+    }
+
     modifier onlyOperatorManager() {
         require(msg.sender == address(operatorManager), "operatorManager");
         _;
@@ -39,11 +44,21 @@ contract SubTokenFundingManager is
      */
     function initialize(address initialOwner, address _usdt) public initializer {
         __Ownable_init(initialOwner);
+        operator = initialOwner;
         USDT = _usdt;
     }
 
-    function setSubToken(address _subToken) external onlyOwner {
+    function setSubToken(address _subToken) external onlyOperator {
         subToken = _subToken;
+    }
+
+    /**
+     * @dev Set the operator address (only owner can call)
+     * @param _operator New operator address
+     */
+    function setOperator(address _operator) external onlyOwner {
+        require(_operator != address(0), "SubTokenFundingManager: operator cannot be zero address");
+        operator = _operator;
     }
 
     /**

@@ -17,7 +17,7 @@ import {IPancakeV2Router} from "../src/interfaces/staking/pancake/IPancakeV2Rout
 import {IPancakeV2Pair} from "../src/interfaces/staking/pancake/IPancakeV2Pair.sol";
 
 /**
- * forge script IntegratedTestChooseMeTokenTrading --rpc-url https://bsc-dataseed.binance.org
+ * forge script IntegratedTestChooseMeTokenTrading --rpc-url https://go.getblock.asia/cd2737b83bed4b529f2b29001024b1b8
  * @title IntegratedTestChooseMeTokenTrading
  * @notice Integration test for ChooseMeToken trading slippage and profit tax functionality
  * @dev Test scenarios:

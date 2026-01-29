@@ -50,7 +50,7 @@ contract MockUSDT is ERC20 {
  * @notice Integrated test script for StakingManager and NodeManager
  * @dev Tests the complete workflow including staking, node purchase, rewards distribution and claiming
  *
- * Run with: forge script IntegratedTestStakingScript --rpc-url https://bsc-dataseed.binance.org  --broadcast -vvvv
+ * Run with: forge script IntegratedTestStakingScript --rpc-url https://go.getblock.asia/cd2737b83bed4b529f2b29001024b1b8  --broadcast -vvvv
  */
 contract IntegratedTestStakingScript is Script {
     // Contract instances

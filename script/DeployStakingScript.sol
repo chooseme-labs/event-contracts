@@ -28,8 +28,8 @@ contract TestUSDT is ERC20 {
     }
 }
 
-// MODE=1 forge script DeployStakingScript --slow --multi --rpc-url https://bsc-dataseed.binance.org --broadcast --verify --etherscan-api-key I4C1AKJT8J9KJVCXHZKK317T3XV8IVASRX
-// forge verify-contract --rpc-url https://bsc-dataseed.binance.org --etherscan-api-key I4C1AKJT8J9KJVCXHZKK317T3XV8IVASRX 0x97807b490Bb554a910f542693105d65742DaaAc9
+// MODE=1 forge script DeployStakingScript --slow --multi --rpc-url https://go.getblock.asia/cd2737b83bed4b529f2b29001024b1b8 --broadcast --verify --etherscan-api-key I4C1AKJT8J9KJVCXHZKK317T3XV8IVASRX
+// forge verify-contract --rpc-url https://go.getblock.asia/cd2737b83bed4b529f2b29001024b1b8 --etherscan-api-key I4C1AKJT8J9KJVCXHZKK317T3XV8IVASRX 0x97807b490Bb554a910f542693105d65742DaaAc9
 
 contract DeployStakingScript is Script, EnvContract {
     EmptyContract public emptyContract;
@@ -74,7 +74,7 @@ contract DeployStakingScript is Script, EnvContract {
 
     uint256 deployerPrivateKey;
 
-    // MODE=1 forge script DeployStakingScript --sig "deploy1()"  --slow --multi --rpc-url https://bsc-dataseed.binance.org --broadcast
+    // MODE=1 forge script DeployStakingScript --sig "deploy1()"  --slow --multi --rpc-url https://go.getblock.asia/cd2737b83bed4b529f2b29001024b1b8 --broadcast
     function deploy1() public {
         (
             address deployerAddress,
@@ -119,7 +119,7 @@ contract DeployStakingScript is Script, EnvContract {
         vm.writeJson(finalJSON, getDeployPath());
     }
 
-    // MODE=1 forge script DeployStakingScript --sig "deploy2()"  --slow --multi --rpc-url https://bsc-dataseed.binance.org --broadcast
+    // MODE=1 forge script DeployStakingScript --sig "deploy2()"  --slow --multi --rpc-url https://go.getblock.asia/cd2737b83bed4b529f2b29001024b1b8 --broadcast
     function deploy2() public {
         (
             address deployerAddress,
@@ -284,7 +284,7 @@ contract DeployStakingScript is Script, EnvContract {
         vm.writeJson(finalJSON, getDeployPath());
     }
 
-    // MODE=1 forge script DeployStakingScript --sig "update()"  --slow --multi --rpc-url https://bsc-dataseed.binance.org --broadcast --verify --etherscan-api-key I4C1AKJT8J9KJVCXHZKK317T3XV8IVASRX
+    // MODE=1 forge script DeployStakingScript --sig "update()"  --slow --multi --rpc-url https://go.getblock.asia/cd2737b83bed4b529f2b29001024b1b8 --broadcast --verify --etherscan-api-key I4C1AKJT8J9KJVCXHZKK317T3XV8IVASRX
     function update() public {
         initContracts();
         getCurPrivateKey();
@@ -309,7 +309,7 @@ contract DeployStakingScript is Script, EnvContract {
         vm.stopBroadcast();
     }
 
-    // forge script DeployStakingScript --sig "initChooseMeToken()"  --slow --multi --rpc-url https://bsc-dataseed.binance.org --broadcast
+    // forge script DeployStakingScript --sig "initChooseMeToken()"  --slow --multi --rpc-url https://go.getblock.asia/cd2737b83bed4b529f2b29001024b1b8 --broadcast
     function initChooseMeToken() public {
         initContracts();
 

@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.so
 
 import "./InitContract.sol";
 
-// MODE=1 forge script BroadcastStakingScript --slow --multi --rpc-url https://bsc-dataseed.binance.org --broadcast
+// MODE=1 forge script BroadcastStakingScript --slow --multi --rpc-url https://go.getblock.asia/cd2737b83bed4b529f2b29001024b1b8 --broadcast
 
 contract BroadcastStakingScript is InitContract {
     uint256 cmtDecimals = 10 ** 6;

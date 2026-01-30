@@ -94,62 +94,25 @@ contract StakingManager is
      * @param amount Staking amount, must match one of the staking types from T1-T6
      */
     function liquidityProviderDeposit(uint256 amount) external {
-        if (
-            amount != t1Staking && amount != t2Staking && amount != t3Staking && amount != t4Staking
-                && amount != t5Staking && amount != t6Staking
-        ) {
-            revert InvalidAmountError(amount);
-        }
+        require(nodeManager.inviters(msg.sender) != address(0), "inviter not set");
+        require(amount >= userCurrentLiquidityAmount[msg.sender], "amount should more than previous staking amount");
 
-        require(
-            nodeManager.inviters(msg.sender) != address(0), "StakingManager.liquidityProviderDeposit: inviter not set"
-        );
-
-        require(
-            amount >= userCurrentLiquidityProvider[msg.sender],
-            "StakingManager.liquidityProviderDeposit: amount should more than previous staking amount"
-        );
-        userCurrentLiquidityProvider[msg.sender] = amount;
-
+        userCurrentLiquidityAmount[msg.sender] = amount;
         IERC20(USDT).safeTransferFrom(msg.sender, address(this), amount);
-
         (uint8 stakingType, uint256 endStakingTime) = liquidityProviderTypeAndAmount(amount);
+        stakingTypeUsers[stakingType].push(msg.sender);
 
-        differentTypeLpList[stakingType].push(msg.sender);
+        uint256 round = lpStakingRound[msg.sender];
+        StakingInfo storage lpInfo = liquidities[msg.sender][round];
+        lpInfo.liquidityProvider = msg.sender;
+        lpInfo.stakingType = stakingType;
+        lpInfo.stakingAmount = amount;
+        lpInfo.rewardUAmount = 0;
+        lpInfo.rewardAmount = 0;
+        lpInfo.claimedAmount = 0;
 
-        uint256 endStakingTimeDuration = block.timestamp + endStakingTime;
+        emit LiquidityProviderDeposits(round, USDT, stakingType, msg.sender, amount, block.timestamp, endStakingTime);
 
-        LiquidityProviderInfo memory lpInfo = LiquidityProviderInfo({
-            liquidityProvider: msg.sender,
-            stakingType: stakingType,
-            amount: amount,
-            rewardUAmount: 0,
-            rewardAmount: 0,
-            startTime: block.timestamp,
-            endTime: endStakingTimeDuration
-        });
-
-        currentLiquidityProvider[msg.sender][lpStakingRound[msg.sender]] = lpInfo;
-
-        if (totalLpStakingReward[msg.sender].liquidityProvider == address(0)) {
-            totalLpStakingReward[msg.sender] = LiquidityProviderStakingReward({
-                liquidityProvider: msg.sender,
-                totalStaking: 0,
-                totalReward: 0,
-                totalUReward: 0,
-                claimedReward: 0,
-                dailyNormalReward: 0,
-                directReferralReward: 0,
-                teamReferralReward: 0,
-                fomoPoolReward: 0
-            });
-        }
-
-        emit LiquidityProviderDeposits(
-            lpStakingRound[msg.sender], USDT, stakingType, msg.sender, amount, block.timestamp, endStakingTime
-        );
-
-        totalLpStakingReward[msg.sender].totalStaking += amount;
         lpStakingRound[msg.sender] += 1;
         teamOutOfReward[msg.sender] = false;
     }
@@ -160,7 +123,7 @@ contract StakingManager is
      * @return Address array of all liquidity providers of this type
      */
     function getLiquidityProvidersByType(uint8 stakingType) external view returns (address[] memory) {
-        return differentTypeLpList[stakingType];
+        return stakingTypeUsers[stakingType];
     }
 
     /**
@@ -169,7 +132,7 @@ contract StakingManager is
      * @param round Staking round
      * @param tokenAmount Token reward amount
      * @param usdtAmount USDT reward amount
-     * @param incomeType Income type (0 - daily normal reward, 1 - direct referral reward, 2 - team reward, 3 - FOMO pool reward)
+     * @param incomeType Income type (0 - daily normal reward, 1 - direct referral reward, 2 - team reward, 3 - sub equal reward, 4 - FOMO pool reward)
      */
     function createLiquidityProviderReward(
         address lpAddress,
@@ -178,43 +141,22 @@ contract StakingManager is
         uint256 usdtAmount,
         uint8 incomeType
     ) public onlyStakingOperatorManager {
-        require(lpAddress != address(0), "StakingManager.createLiquidityProviderReward: zero address");
-        require(
-            tokenAmount > 0 && usdtAmount > 0,
-            "StakingManager.createLiquidityProviderReward: amount should more than zero"
-        );
-        LiquidityProviderStakingReward storage lpStakingReward = totalLpStakingReward[lpAddress];
-        LiquidityProviderInfo storage stakingInfo = currentLiquidityProvider[lpAddress][round];
-        require(
-            stakingInfo.amount * 3 > stakingInfo.rewardUAmount,
-            "StakingManager.createLiquidityProviderReward: already reached limit"
-        );
+        require(lpAddress != address(0), "zero address");
+        require(tokenAmount > 0 && usdtAmount > 0, "amount should more than zero");
 
+        StakingInfo storage lpInfo = liquidities[lpAddress][round];
         uint256 usdtRewardAmount = usdtAmount;
         bool reachedLimit = false;
-        if (stakingInfo.rewardUAmount + usdtRewardAmount >= stakingInfo.amount * 3) {
-            usdtRewardAmount = stakingInfo.amount * 3 - stakingInfo.rewardUAmount;
+        if (lpInfo.rewardUAmount + usdtRewardAmount >= lpInfo.stakingAmount * 3) {
+            usdtRewardAmount = lpInfo.stakingAmount * 3 - lpInfo.rewardUAmount;
             reachedLimit = true;
         }
+        require(usdtRewardAmount > 0, "reward reached limit");
         tokenAmount = tokenAmount * usdtRewardAmount / usdtAmount;
 
-        stakingInfo.rewardUAmount += usdtRewardAmount;
-        stakingInfo.rewardAmount += tokenAmount;
-
-        lpStakingReward.totalUReward += usdtRewardAmount;
-        lpStakingReward.totalReward += tokenAmount;
-
-        if (incomeType == uint8(StakingRewardType.DailyNormalReward)) {
-            lpStakingReward.dailyNormalReward += tokenAmount;
-        } else if (incomeType == uint8(StakingRewardType.DirectReferralReward)) {
-            lpStakingReward.directReferralReward += tokenAmount;
-        } else if (incomeType == uint8(StakingRewardType.TeamReferralReward)) {
-            lpStakingReward.teamReferralReward += tokenAmount;
-        } else if (incomeType == uint8(StakingRewardType.FomoPoolReward)) {
-            lpStakingReward.fomoPoolReward += tokenAmount;
-        } else {
-            revert InvalidRewardTypeError(incomeType);
-        }
+        lpInfo.rewardUAmount += usdtRewardAmount;
+        lpInfo.rewardAmount += tokenAmount;
+        lpInfo.rewards[incomeType] += tokenAmount;
 
         emit LiquidityProviderRewards({
             round: round,
@@ -226,7 +168,7 @@ contract StakingManager is
         });
 
         if (reachedLimit) {
-            outOfAchieveReturnsNode(lpAddress, round, stakingInfo.rewardUAmount);
+            outOfAchieveReturnsNode(lpAddress, round, lpInfo.rewardUAmount);
         }
     }
 
@@ -244,20 +186,16 @@ contract StakingManager is
 
     /**
      * @dev Liquidity provider claim reward - User side
-     * @param amount Reward amount to claim
      * @notice 20% of rewards will be forcibly withheld and converted to USDT for deposit into event prediction market
      */
-    function liquidityProviderClaimReward(uint256 amount) external nonReentrant {
-        require(amount > 0, "StakingManager.liquidityProviderClaimReward: reward amount must more than zero");
+    function liquidityProviderClaimReward(uint256 round) external nonReentrant {
+        StakingInfo storage lpInfo = liquidities[msg.sender][round];
+        uint256 amount = lpInfo.rewardAmount - lpInfo.claimedAmount;
+        require(amount > 0, "reward insufficient");
 
-        if (amount > totalLpStakingReward[msg.sender].totalReward - totalLpStakingReward[msg.sender].claimedReward) {
-            revert InvalidRewardAmount(msg.sender, amount);
-        }
-
-        totalLpStakingReward[msg.sender].claimedReward += amount;
+        lpInfo.claimedAmount += amount;
 
         uint256 toEventPredictionAmount = (amount * 20) / 100;
-
         if (toEventPredictionAmount > 0) {
             daoRewardManager.withdraw(address(this), toEventPredictionAmount);
 
@@ -268,11 +206,11 @@ contract StakingManager is
         }
 
         uint256 canWithdrawAmount = amount - toEventPredictionAmount;
-
         daoRewardManager.withdraw(msg.sender, canWithdrawAmount);
 
         emit lpClaimReward({
             liquidityProvider: msg.sender,
+            round: round,
             withdrawAmount: canWithdrawAmount,
             toPredictionAmount: toEventPredictionAmount
         });
@@ -352,6 +290,30 @@ contract StakingManager is
 
         emit outOfAchieveReturnsNodeExit({
             liquidityProvider: lpAddress, round: round, totalReward: totalReward, blockNumber: block.number
+        });
+    }
+
+    function getLiquidityProviderInfo(address lpAddress, uint256 round)
+        external
+        view
+        returns (StakingInfoOutput memory)
+    {
+        StakingInfo storage lpInfo = liquidities[lpAddress][round];
+
+        uint rewardType = uint256(StakingRewardType.NodeIncomeCategorySameLevelFee) + 1
+        uint256[] memory rewards = new uint256[](rewardType);
+        for (uint8 i = 0; i < rewardType; i++) {
+            rewards[i] = lpInfo.rewards[i];
+        }
+
+        return StakingInfoOutput({
+            liquidityProvider: lpInfo.liquidityProvider,
+            stakingType: lpInfo.stakingType,
+            stakingAmount: lpInfo.stakingAmount,
+            rewardUAmount: lpInfo.rewardUAmount,
+            rewardAmount: lpInfo.rewardAmount,
+            claimedAmount: lpInfo.claimedAmount,
+            rewards: rewards
         });
     }
 }

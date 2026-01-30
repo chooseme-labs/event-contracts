@@ -38,15 +38,12 @@ abstract contract StakingManagerStorage is IStakingManager {
     address public manager;
 
     mapping(address => uint256) public lpStakingRound;
-    mapping(address => mapping(uint256 => LiquidityProviderInfo)) public currentLiquidityProvider;
+    mapping(address => mapping(uint256 => StakingInfo)) public liquidities;
 
-    mapping(address => LiquidityProviderInfo[]) public liquidityProviderStakeHistory;
-    mapping(address => LiquidityProviderStakingReward) public totalLpStakingReward;
-
-    mapping(uint8 => address[]) public differentTypeLpList;
+    mapping(uint8 => address[]) public stakingTypeUsers;
     mapping(address => bool) public teamOutOfReward;
 
-    mapping(address => uint256) public userCurrentLiquidityProvider;
+    mapping(address => uint256) public userCurrentLiquidityAmount;
 
     uint256[100] private __gap;
 }

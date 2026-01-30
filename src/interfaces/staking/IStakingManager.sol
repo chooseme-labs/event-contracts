@@ -25,10 +25,33 @@ interface IStakingManager {
     }
 
     enum StakingRewardType {
-        DailyNormalReward,
-        DirectReferralReward,
-        TeamReferralReward,
-        FomoPoolReward
+        NodeIncomeCategoryNodeFee,
+        NodeIncomeCategoryNetworkTransactionFee,
+        NodeIncomeCategorySecondaryMarketFee,
+        NodeIncomeCategorySubcoinFee,
+        NodeIncomeCategoryDirectFee,
+        NodeIncomeCategoryTeamFee,
+        NodeIncomeCategorySameLevelFee
+    }
+
+    struct StakingInfo {
+        address liquidityProvider;
+        uint8 stakingType;
+        uint256 stakingAmount;
+        uint256 rewardUAmount;
+        uint256 rewardAmount;
+        uint256 claimedAmount;
+        mapping(uint32 => uint256) rewards;
+    }
+
+    struct StakingInfoOutput {
+        address liquidityProvider;
+        uint8 stakingType;
+        uint256 stakingAmount;
+        uint256 rewardUAmount;
+        uint256 rewardAmount;
+        uint256 claimedAmount;
+        uint256[] rewards;
     }
 
     struct LiquidityProviderInfo {
@@ -37,8 +60,6 @@ interface IStakingManager {
         uint256 amount;
         uint256 rewardUAmount;
         uint256 rewardAmount;
-        uint256 startTime;
-        uint256 endTime;
     }
 
     struct LiquidityProviderStakingReward {
@@ -80,7 +101,9 @@ interface IStakingManager {
         uint8 incomeType
     );
 
-    event lpClaimReward(address indexed liquidityProvider, uint256 withdrawAmount, uint256 toPredictionAmount);
+    event lpClaimReward(
+        address indexed liquidityProvider, uint256 round, uint256 withdrawAmount, uint256 toPredictionAmount
+    );
 
     event outOfAchieveReturnsNodeExit(
         address indexed liquidityProvider, uint256 round, uint256 totalReward, uint256 blockNumber

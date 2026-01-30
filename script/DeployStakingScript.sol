@@ -80,6 +80,7 @@ contract DeployStakingScript is Script, EnvContract {
             address deployerAddress,
             address distributeRewardAddress,
             address chooseMeMultiSign,
+            address chooseMeMultiSign2,
             address usdtTokenAddress
         ) = getENVAddress();
 
@@ -97,7 +98,11 @@ contract DeployStakingScript is Script, EnvContract {
             ITransparentUpgradeableProxy(address(nodeManager)),
             address(nodeManagerImplementation),
             abi.encodeWithSelector(
-                NodeManager.initialize.selector, chooseMeMultiSign, usdtTokenAddress, distributeRewardAddress
+                NodeManager.initialize.selector,
+                chooseMeMultiSign,
+                chooseMeMultiSign2,
+                usdtTokenAddress,
+                distributeRewardAddress
             )
         );
 
@@ -125,6 +130,7 @@ contract DeployStakingScript is Script, EnvContract {
             address deployerAddress,
             address distributeRewardAddress,
             address chooseMeMultiSign,
+            address chooseMeMultiSign2,
             address usdtTokenAddress
         ) = getENVAddress();
 
@@ -198,7 +204,11 @@ contract DeployStakingScript is Script, EnvContract {
             ITransparentUpgradeableProxy(address(nodeManager)),
             address(nodeManagerImplementation),
             abi.encodeWithSelector(
-                NodeManager.initialize.selector, chooseMeMultiSign, usdtTokenAddress, distributeRewardAddress
+                NodeManager.initialize.selector,
+                chooseMeMultiSign,
+                chooseMeMultiSign2,
+                usdtTokenAddress,
+                distributeRewardAddress
             )
         );
 
@@ -215,6 +225,7 @@ contract DeployStakingScript is Script, EnvContract {
             abi.encodeWithSelector(
                 StakingManager.initialize.selector,
                 chooseMeMultiSign,
+                chooseMeMultiSign2,
                 address(chooseMeToken),
                 usdtTokenAddress,
                 distributeRewardAddress,
@@ -237,31 +248,45 @@ contract DeployStakingScript is Script, EnvContract {
         fomoTreasureManagerProxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(address(fomoTreasureManager)),
             address(fomoTreasureManagerImplementation),
-            abi.encodeWithSelector(FomoTreasureManager.initialize.selector, chooseMeMultiSign, address(chooseMeToken))
+            abi.encodeWithSelector(
+                FomoTreasureManager.initialize.selector, chooseMeMultiSign, chooseMeMultiSign, usdtTokenAddress
+            )
         );
 
         eventFundingManagerProxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(address(eventFundingManager)),
             address(eventFundingManagerImplementation),
-            abi.encodeWithSelector(EventFundingManager.initialize.selector, chooseMeMultiSign, usdtTokenAddress)
+            abi.encodeWithSelector(
+                EventFundingManager.initialize.selector, chooseMeMultiSign, chooseMeMultiSign, usdtTokenAddress
+            )
         );
 
         subTokenFundingManagerProxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(address(subTokenFundingManager)),
             address(subTokenFundingManagerImplementation),
-            abi.encodeWithSelector(SubTokenFundingManager.initialize.selector, chooseMeMultiSign, usdtTokenAddress)
+            abi.encodeWithSelector(
+                SubTokenFundingManager.initialize.selector,
+                chooseMeMultiSign,
+                chooseMeMultiSign,
+                chooseMeMultiSign,
+                usdtTokenAddress
+            )
         );
 
         marketManagerProxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(address(marketManager)),
             address(marketManagerImplementation),
-            abi.encodeWithSelector(MarketManager.initialize.selector, chooseMeMultiSign, usdtTokenAddress)
+            abi.encodeWithSelector(
+                MarketManager.initialize.selector, chooseMeMultiSign, chooseMeMultiSign, address(chooseMeToken)
+            )
         );
 
         airdropManagerProxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(address(airdropManager)),
             address(airdropManagerImplementation),
-            abi.encodeWithSelector(AirdropManager.initialize.selector, chooseMeMultiSign, usdtTokenAddress)
+            abi.encodeWithSelector(
+                AirdropManager.initialize.selector, chooseMeMultiSign, chooseMeMultiSign, address(chooseMeToken)
+            )
         );
 
         vm.stopBroadcast();
@@ -409,6 +434,7 @@ contract DeployStakingScript is Script, EnvContract {
             address deployerAddress,
             address distributeRewardAddress,
             address chooseMeMultiSign,
+            address chooseMeMultiSign2,
             address usdtTokenAddress
         )
     {
@@ -428,6 +454,7 @@ contract DeployStakingScript is Script, EnvContract {
             deployerAddress = vm.addr(deployerPrivateKey);
             distributeRewardAddress = vm.envAddress("DR_ADDRESS");
             chooseMeMultiSign = vm.envAddress("MULTI_SIGNER");
+            chooseMeMultiSign2 = vm.envAddress("MULTI_SIGNER_2");
             usdtTokenAddress = vm.envAddress("USDT_TOKEN_ADDRESS");
         }
     }

@@ -8,12 +8,13 @@ interface INodeManager {
     }
 
     enum NodeIncomeType {
-        DailyNormalProfit,
-        TradeFeeProfit,
-        ChildCoinProfit,
-        SecondTierMarketProfit,
-        DirectReferralProfit,
-        TeamReferralProfit
+        NodeIncomeCategoryNodeFee,
+        NodeIncomeCategoryNetworkTransactionFee,
+        NodeIncomeCategorySecondaryMarketFee,
+        NodeIncomeCategorySubcoinFee,
+        NodeIncomeCategoryDirectFee,
+        NodeIncomeCategoryTeamFee,
+        NodeIncomeCategorySameLevelFee
     }
 
     struct NodeBuyerInfo {

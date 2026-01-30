@@ -25,13 +25,11 @@ interface IStakingManager {
     }
 
     enum StakingRewardType {
-        NodeIncomeCategoryNodeFee,
-        NodeIncomeCategoryNetworkTransactionFee,
-        NodeIncomeCategorySecondaryMarketFee,
-        NodeIncomeCategorySubcoinFee,
-        NodeIncomeCategoryDirectFee,
-        NodeIncomeCategoryTeamFee,
-        NodeIncomeCategorySameLevelFee
+        StakingIncomeCategoryStatic,
+        StakingIncomeCategoryDirect,
+        StakingIncomeCategoryTeam,
+        StakingIncomeCategoryTrading,
+        StakingIncomeCategorySameLevel
     }
 
     struct StakingInfo {

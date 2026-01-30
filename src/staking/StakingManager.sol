@@ -300,7 +300,7 @@ contract StakingManager is
     {
         StakingInfo storage lpInfo = liquidities[lpAddress][round];
 
-        uint rewardType = uint256(StakingRewardType.NodeIncomeCategorySameLevelFee) + 1
+        uint256 rewardType = uint256(StakingRewardType.NodeIncomeCategorySameLevelFee) + 1;
         uint256[] memory rewards = new uint256[](rewardType);
         for (uint8 i = 0; i < rewardType; i++) {
             rewards[i] = lpInfo.rewards[i];

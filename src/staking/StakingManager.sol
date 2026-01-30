@@ -188,8 +188,8 @@ contract StakingManager is
      * @dev Liquidity provider claim reward - User side
      * @notice 20% of rewards will be forcibly withheld and converted to USDT for deposit into event prediction market
      */
-    function liquidityProviderClaimReward(uint256 round) external nonReentrant {
-        StakingInfo storage lpInfo = liquidities[msg.sender][round];
+    function _liquidityProviderClaimReward(address user, uint256 round) internal {
+        StakingInfo storage lpInfo = liquidities[user][round];
         uint256 amount = lpInfo.rewardAmount - lpInfo.claimedAmount;
         require(amount > 0, "reward insufficient");
 
@@ -206,14 +206,32 @@ contract StakingManager is
         }
 
         uint256 canWithdrawAmount = amount - toEventPredictionAmount;
-        daoRewardManager.withdraw(msg.sender, canWithdrawAmount);
+        daoRewardManager.withdraw(user, canWithdrawAmount);
 
         emit lpClaimReward({
-            liquidityProvider: msg.sender,
+            liquidityProvider: user,
             round: round,
             withdrawAmount: canWithdrawAmount,
             toPredictionAmount: toEventPredictionAmount
         });
+    }
+
+    /**
+     * @dev Liquidity provider claim reward - User side
+     * @notice 20% of rewards will be forcibly withheld and converted to USDT for deposit into event prediction market
+     */
+    function liquidityProviderClaimReward(uint256 round) external nonReentrant {
+        _liquidityProviderClaimReward(msg.sender, round);
+    }
+
+    function _liquidityProviderClaimRewardBatch() external nonReentrant {
+        address user = msg.sender;
+        uint256 round = lpStakingRound[user];
+        for (uint256 i = 0; i < round; i++) {
+            if (liquidities[user][i].rewardAmount > liquidities[user][i].claimedAmount) {
+                _liquidityProviderClaimReward(user, i);
+            }
+        }
     }
 
     /**

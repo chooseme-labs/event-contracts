@@ -447,6 +447,7 @@ contract DeployStakingScript is Script, EnvContract {
             deployerAddress = vm.addr(deployerPrivateKey);
             distributeRewardAddress = deployerAddress;
             chooseMeMultiSign = deployerAddress;
+            chooseMeMultiSign2 = deployerAddress;
             ERC20 usdtToken = new TestUSDT();
             usdtTokenAddress = address(usdtToken);
             vm.stopBroadcast();

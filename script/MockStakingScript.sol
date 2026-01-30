@@ -70,7 +70,8 @@ contract MockStakingScript is InitContract {
             address user = vm.addr(userKey);
             address inviter = nodeManager.inviters(user);
 
-            if (inviter == address(0)) {
+            (address buyer, uint8 nodeType, uint256 amount) = nodeManager.nodeBuyerInfo(user);
+            if (inviter == address(0) && buyer != address(0)) {
                 continue;
             }
             uint256 amount = amounts[i % 2];

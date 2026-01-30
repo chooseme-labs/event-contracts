@@ -11,14 +11,11 @@ import "./InitContract.sol";
 
 // MODE=1 forge script MockStakingScript --slow --multi --rpc-url https://go.getblock.asia/cd2737b83bed4b529f2b29001024b1b8 --broadcast
 contract MockStakingScript is InitContract {
-    function run() public {
+    function run() public {}
+
+    function buyStaking(uint32 start, uint32 end) public {
         initContracts();
 
-        // bindUser(250, 300);
-        buyStaking(230, 240);
-    }
-
-    function buyStaking(uint32 start, uint32 end) internal {
         string memory mnemonic = vm.envString("DEV_MNEMONIC");
         uint256 deployerPrivateKey = vm.envUint("DEV_PRIVATE_KEY");
         uint32 startIndex = 10;
@@ -55,7 +52,9 @@ contract MockStakingScript is InitContract {
 
     mapping(uint32 => uint32) internal nMap;
 
-    function bindUser(uint32 start, uint32 end) internal {
+    function bindUser(uint32 start, uint32 end) public {
+        initContracts();
+
         uint32 layer = 10;
         uint32 layerCount = 5;
         uint32 max = 4;

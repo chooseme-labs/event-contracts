@@ -18,13 +18,13 @@ contract AirdropManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
         _disableInitializers();
     }
 
-    modifier onlyOperator() {
-        require(msg.sender == operator, "AirdropManager: caller is not the operator");
+    modifier onlyManager() {
+        require(msg.sender == manager, "onlyManager");
         _;
     }
 
     modifier onAuthorizedCaller() {
-        require(authorizedCallers.contains(msg.sender), "AirdropManager: caller is not authorized");
+        require(authorizedCallers.contains(msg.sender), "onAuthorizedCaller");
         _;
     }
 
@@ -33,9 +33,9 @@ contract AirdropManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
      * @param initialOwner Initial owner address
      * @param _token Reward token address (CMT)
      */
-    function initialize(address initialOwner, address _token) public initializer {
+    function initialize(address initialOwner, address initialManager, address _token) public initializer {
         __Ownable_init(initialOwner);
-        operator = initialOwner;
+        manager = initialManager;
         token = _token;
     }
 
@@ -43,7 +43,7 @@ contract AirdropManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
      * @dev Add an authorized caller
      * @param caller Address to be authorized
      */
-    function addAuthorizedCaller(address caller) external onlyOperator {
+    function addAuthorizedCaller(address caller) external onlyManager {
         authorizedCallers.add(caller);
     }
 
@@ -51,17 +51,17 @@ contract AirdropManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
      * @dev Remove an authorized caller
      * @param caller Address to be removed from authorization
      */
-    function removeAuthorizedCaller(address caller) external onlyOperator {
+    function removeAuthorizedCaller(address caller) external onlyManager {
         authorizedCallers.remove(caller);
     }
 
     /**
-     * @dev Set the operator address (only owner can call)
-     * @param _operator New operator address
+     * @dev Set the manager address (only owner can call)
+     * @param _manager New manager address
      */
-    function setOperator(address _operator) external onlyOwner {
-        require(_operator != address(0), "AirdropManager: operator cannot be zero address");
-        operator = _operator;
+    function setManager(address _manager) external onlyOwner {
+        require(_manager != address(0), "AirdropManager: manager cannot be zero address");
+        manager = _manager;
     }
 
     /**

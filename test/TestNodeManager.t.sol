@@ -106,10 +106,10 @@ contract TestNodeManager is Test {
         DaoRewardManager daoLogic = new DaoRewardManager();
         TransparentUpgradeableProxy daoProxy = new TransparentUpgradeableProxy(address(daoLogic), owner, "");
         daoRewardManager = DaoRewardManager(payable(address(daoProxy)));
-        daoRewardManager.initialize(owner, address(chooseMeToken), address(nodeManager), distributeRewardAddress);
+        daoRewardManager.initialize(owner, address(chooseMeToken));
 
         // Initialize NodeManager
-        nodeManager.initialize(owner, address(usdt), distributeRewardAddress);
+        nodeManager.initialize(owner, owner, address(usdt), distributeRewardAddress);
         nodeManager.setConfig(address(chooseMeToken), address(daoRewardManager), address(eventFundingManager));
 
         // Setup tokens for testing
@@ -421,7 +421,7 @@ contract TestNodeManager is Test {
     function testCannotReinitialize() public {
         vm.prank(owner);
         vm.expectRevert();
-        nodeManager.initialize(owner, address(usdt), distributeRewardAddress);
+        nodeManager.initialize(owner, owner, address(usdt), distributeRewardAddress);
         nodeManager.setConfig(address(chooseMeToken), address(daoRewardManager), address(eventFundingManager));
     }
 

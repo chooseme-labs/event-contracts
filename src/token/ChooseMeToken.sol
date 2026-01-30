@@ -134,9 +134,9 @@ contract ChooseMeToken is
         uint256 profitSubFee;
         // profit fee only for sell
         // Profit USDT is greater than 0, a profit handling fee will be charged
-        (uint256 curUValue, uint256 profit) = getProfit(from, to, finallyValue, isBuy, isSell);
-        if (isSell && profit > 0 && curUValue > 0) {
-            uint256 everyProfit = (finallyValue * profit) / (curUValue * 10000);
+        (uint256 curUValue, uint256 uProfit) = getProfit(from, to, finallyValue, isBuy, isSell);
+        if (isSell && uProfit > 0 && curUValue > 0) {
+            uint256 everyProfit = (finallyValue * uProfit) / (curUValue * 10000);
 
             profitNodeFee = everyProfit * profitFee.nodeFee;
             profitClusterFee = everyProfit * profitFee.clusterFee;
@@ -182,16 +182,16 @@ contract ChooseMeToken is
         uint256 techFee = cumulativeSlipage.techFee;
         uint256 subFee = cumulativeSlipage.subTokenFee;
 
-        cumulativeSlipage.marketFee = 0;
-        cumulativeSlipage.techFee = 0;
-        cumulativeSlipage.subTokenFee = 0;
-
         uint256 totalSlipage = marketFee + techFee + subFee;
         if (totalSlipage == 0 || totalSlipage > balanceOf(address(this))) {
             return;
         }
 
-        uint256 uAmount = SwapHelper.swapV2(V2_ROUTER, address(this), USDT, totalSlipage, currencyDistributor);
+        cumulativeSlipage.marketFee = 0;
+        cumulativeSlipage.techFee = 0;
+        cumulativeSlipage.subTokenFee = 0;
+
+        uint256 uAmount = SwapHelper.swapV2(V2_ROUTER, address(this), USDT, totalSlipage, 0, currencyDistributor);
 
         IERC20(USDT).transferFrom(currencyDistributor, cmPool.marketingPool, uAmount * marketFee / totalSlipage);
         IERC20(USDT).transferFrom(currencyDistributor, cmPool.techRewardsPool, uAmount * techFee / totalSlipage);
@@ -202,7 +202,7 @@ contract ChooseMeToken is
 
     function getProfit(address from, address to, uint256 value, bool isBuy, bool isSell)
         internal
-        returns (uint256 curUValue, uint256 profit)
+        returns (uint256 curUValue, uint256 uProfit)
     {
         (uint256 rOther, uint256 rThis,,) = getReserves(mainPair, address(this));
         if (rOther == 0 || rThis == 0) {
@@ -225,7 +225,7 @@ contract ChooseMeToken is
         userCost[to] += curUValue;
         uint256 fromUValue = curUValue;
         if (fromUValue > userCost[from]) {
-            profit = fromUValue - userCost[from];
+            uProfit = fromUValue - userCost[from];
             fromUValue = userCost[from];
         }
         userCost[from] -= fromUValue;

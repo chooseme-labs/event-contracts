@@ -13,6 +13,7 @@ abstract contract NodeManagerStorage is INodeManager {
     address public USDT;
     address public underlyingToken;
     address public distributeRewardAddress;
+    address public manager;
 
     IDaoRewardManager public daoRewardManager;
     IEventFundingManager public eventFundingManager;
@@ -25,6 +26,5 @@ abstract contract NodeManagerStorage is INodeManager {
 
     mapping(address => address) public inviters;
 
-    address public batchCaller;
     uint256[100] private __gap;
 }

@@ -92,23 +92,23 @@ contract MockEventFundingManager is IEventFundingManager {
         return true;
     }
 
-    function bettingEvent(address event_pool, uint256 amount) external override {}
+    function bettingEvent(address eventPod, address user, uint256 amount) external override {}
 }
 
 // Mock SubTokenFundingManager for testing
 contract MockSubTokenFundingManager is ISubTokenFundingManager {
     address public V2_ROUTER;
     address public USDT;
-    address public operatorManager;
+    address public manager;
     uint256 public totalLiquidityAdded;
 
-    constructor(address _v2Router, address _usdt, address _operatorManager) {
+    constructor(address _v2Router, address _usdt, address _manager) {
         V2_ROUTER = _v2Router;
         USDT = _usdt;
-        operatorManager = _operatorManager;
+        manager = _manager;
     }
 
-    function addLiquidity(uint256 amount) external override {
+    function addLiquidity(uint256 amount, uint256 price) external override {
         IERC20(USDT).transferFrom(msg.sender, address(this), amount);
         totalLiquidityAdded += amount;
         emit LiquidityAdded(amount, amount / 2, amount / 2);
@@ -252,6 +252,7 @@ contract TestStakingManager is Test {
         bytes memory initData = abi.encodeWithSelector(
             StakingManager.initialize.selector,
             owner,
+            owner,
             address(cmt),
             address(usdt),
             operatorManager,
@@ -290,6 +291,7 @@ contract TestStakingManager is Test {
     function testCannotInitializeTwice() public {
         vm.expectRevert();
         stakingManager.initialize(
+            owner,
             owner,
             address(cmt),
             address(usdt),

@@ -4,6 +4,8 @@ pragma solidity ^0.8.20;
 import "@openzeppelin-upgrades/contracts/proxy/utils/Initializable.sol";
 import "@openzeppelin-upgrades/contracts/access/OwnableUpgradeable.sol";
 import "@openzeppelin-upgrades/contracts/utils/PausableUpgradeable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -15,7 +17,7 @@ import "../utils/SwapHelper.sol";
 
 import {NodeManagerStorage} from "./NodeManagerStorage.sol";
 
-contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, NodeManagerStorage {
+contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, ReentrancyGuard, NodeManagerStorage {
     using SafeERC20 for IERC20;
     using SwapHelper for *;
 
@@ -24,8 +26,8 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
         _;
     }
 
-    modifier onlyBatchCaller() {
-        require(msg.sender == batchCaller, "onlyBatchCaller");
+    modifier onlyManager() {
+        require(msg.sender == manager, "onlyManager");
         _;
     }
 
@@ -39,10 +41,18 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
      * @param _usdt USDT address
      * @param _distributeRewardAddress Reward distribution manager address
      */
-    function initialize(address initialOwner, address _usdt, address _distributeRewardAddress) public initializer {
+    function initialize(address initialOwner, address initialManager, address _usdt, address _distributeRewardAddress)
+        public
+        initializer
+    {
         __Ownable_init(initialOwner);
+        manager = initialManager;
         USDT = _usdt;
         distributeRewardAddress = _distributeRewardAddress;
+    }
+
+    function setManager(address _manager) external onlyOwner {
+        manager = _manager;
     }
 
     /**
@@ -53,7 +63,7 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
      */
     function setConfig(address _underlyingToken, address _daoRewardManager, address _eventFundingManager)
         external
-        onlyOwner
+        onlyManager
     {
         underlyingToken = _underlyingToken;
         daoRewardManager = IDaoRewardManager(_daoRewardManager);
@@ -79,12 +89,16 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
     }
 
     function bindInviter(address inviter) public {
+        _bindInviter(inviter, msg.sender);
+    }
+
+    function _bindInviter(address inviter, address user) internal {
         require(inviter != address(0), "Inviter cannot be zero address");
-        require(inviters[msg.sender] == address(0), "Inviter already set");
+        require(inviters[user] == address(0), "Inviter already set");
         require(inviters[inviter] != address(0), "Inviter has no inviter");
 
-        inviters[msg.sender] = inviter;
-        emit BindInviter({inviter: inviter, invitee: msg.sender});
+        inviters[user] = inviter;
+        emit BindInviter({inviter: inviter, invitee: user});
     }
 
     /**
@@ -92,12 +106,18 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
      * @param rootInviter Address to be set as root inviter
      * @param user Address of the user for whom the root inviter is being set
      */
-    function bindRootInviter(address rootInviter, address user) external onlyOwner {
+    function bindRootInviter(address rootInviter, address user) external onlyManager {
         require(rootInviter != address(0) && user != address(0), "Root inviter and user cannot be zero address");
         require(inviters[user] == address(0), "Root inviter already set");
 
         inviters[user] = rootInviter;
         emit BindInviter({inviter: rootInviter, invitee: user});
+    }
+
+    function bindInviterBatch(address[] calldata inviters, address[] calldata invitees) external onlyManager {
+        for (uint256 i = 0; i < inviters.length; i++) {
+            _bindInviter(inviters[i], invitees[i]);
+        }
     }
 
     /**
@@ -152,7 +172,7 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
      * @param amount reward amount to claim
      * @notice 20% of rewards will be forcibly withheld and converted to USDT for deposit into event prediction market
      */
-    function claimReward(uint256 amount) external {
+    function claimReward(uint256 amount) external nonReentrant {
         require(
             amount <= rewardClaimInfo[msg.sender].totalReward - rewardClaimInfo[msg.sender].claimedReward,
             "Claim amount mismatch"
@@ -165,7 +185,7 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
             daoRewardManager.withdraw(address(this), toEventPredictionAmount);
 
             uint256 usdtAmount =
-                SwapHelper.swapV2(V2_ROUTER, underlyingToken, USDT, toEventPredictionAmount, address(this));
+                SwapHelper.swapV2(V2_ROUTER, underlyingToken, USDT, toEventPredictionAmount, 0, address(this));
             IERC20(USDT).approve(address(eventFundingManager), usdtAmount);
             eventFundingManager.depositUsdt(usdtAmount);
         }
@@ -184,7 +204,7 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
      * @param usdtAmount Total amount of USDT to add
      * @notice Convert 50% of USDT to underlying token, then add liquidity to V2
      */
-    function addLiquidity(uint256 tokenAmount, uint256 usdtAmount, address to) external onlyOwner {
+    function addLiquidity(uint256 tokenAmount, uint256 usdtAmount, address to) external onlyManager {
         require(tokenAmount > 0 && usdtAmount > 0, "Amounts must be greater than 0");
 
         IERC20(underlyingToken).approve(V2_ROUTER, tokenAmount);
@@ -218,11 +238,7 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
         emit Withdraw(USDT, recipient, amount);
     }
 
-    function setBatchCaller(address _batchCaller) external onlyOwner {
-        batchCaller = _batchCaller;
-    }
-
-    function purchaseNodeBatch(address[] calldata buyers, uint256[] calldata amounts) external onlyBatchCaller {
+    function purchaseNodeBatch(address[] calldata buyers, uint256[] calldata amounts) external onlyManager {
         for (uint256 i = 0; i < buyers.length; i++) {
             address buyer = buyers[i];
             uint256 amount = amounts[i];

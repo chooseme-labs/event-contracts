@@ -9,51 +9,88 @@ import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.so
 
 import "./InitContract.sol";
 
-// MODE=1 forge script MockStakingScript --slow --multi --rpc-url https://bsc-dataseed.binance.org --broadcast
+// MODE=1 forge script MockStakingScript --slow --multi --rpc-url https://go.getblock.asia/cd2737b83bed4b529f2b29001024b1b8 --broadcast
 contract MockStakingScript is InitContract {
     function run() public {
         initContracts();
 
-        // for (uint256 i = 0; i < 10; i++) {
-        //     (uint256[] memory groups, uint256[] memory parents) = randomUser(i, 40, 3, 7);
-        //     console.log("groups: ===============>", (i + 1) * 40, getN(i) * 40, getN(i + 1) * 40);
-        //     for (uint256 j = 0; j < groups.length; j++) {
-        //         console.log(groups[j], i == 0 ? parents[j] : parents[j] + getN(i - 1) * 40);
-        //     }
-        //     console.log("==========================");
-        // }
-
-        bindUser();
+        // bindUser(250, 300);
+        buyStaking(230, 240);
     }
 
-    function bindUser() internal {
+    function buyStaking(uint32 start, uint32 end) internal {
+        string memory mnemonic = vm.envString("DEV_MNEMONIC");
+        uint256 deployerPrivateKey = vm.envUint("DEV_PRIVATE_KEY");
+        uint32 startIndex = 10;
+
+        uint256[] memory stakingAmounts = new uint256[](6);
+        stakingAmounts[0] = stakingManager.t1Staking();
+        stakingAmounts[1] = stakingManager.t2Staking();
+        stakingAmounts[2] = stakingManager.t3Staking();
+        stakingAmounts[3] = stakingManager.t4Staking();
+        stakingAmounts[4] = stakingManager.t5Staking();
+        stakingAmounts[5] = stakingManager.t6Staking();
+
+        for (uint32 i = start; i < end; i++) {
+            uint32 mnemonicIndex = i + startIndex;
+            uint256 userKey = vm.deriveKey(mnemonic, mnemonicIndex);
+            address user = vm.addr(userKey);
+            address inviter = nodeManager.inviters(user);
+
+            if (inviter == address(0)) {
+                continue;
+            }
+            uint256 amount = stakingAmounts[i % 3 + 3];
+            vm.startBroadcast(deployerPrivateKey);
+            usdt.transfer(user, amount);
+            payable(user).transfer(0.00004 ether);
+            vm.stopBroadcast();
+
+            vm.startBroadcast(userKey);
+            usdt.approve(address(stakingManager), amount);
+            stakingManager.liquidityProviderDeposit(amount);
+            vm.stopBroadcast();
+        }
+    }
+
+    mapping(uint32 => uint32) internal nMap;
+
+    function bindUser(uint32 start, uint32 end) internal {
         uint32 layer = 10;
-        uint32 layerCount = 40;
+        uint32 layerCount = 5;
+        uint32 max = 4;
+        uint32 min = 2;
         address rootInviter = 0x9e82E436c3D782d1A8cC41F942FCc6fBc72979b3;
         string memory mnemonic = vm.envString("DEV_MNEMONIC");
         uint32 startIndex = 10;
         uint32 mnemonicIndex = startIndex;
         uint256 deployerPrivateKey = vm.envUint("DEV_PRIVATE_KEY");
 
-        vm.startBroadcast(deployerPrivateKey);
-
         for (uint32 i = 0; i < layer; i++) {
-            if (i > 3) {
-                continue;
-            }
-
-            (uint32[] memory groups, uint32[] memory parents) = randomUser(i, layerCount, 3, 7);
+            (uint32[] memory groups, uint32[] memory parents) = randomUser(i, layerCount, min, max);
             for (uint32 j = 0; j < groups.length; j++) {
-                uint32 parentIndex = i == 0 ? parents[j] : parents[j] + getN(i - 1) * layerCount;
-                uint256 parentKey = vm.deriveKey(mnemonic, parentIndex + startIndex);
-                address parent = j == 0 ? rootInviter : vm.addr(parentKey);
+                uint32 parentIndex = (i == 0 ? parents[j] : parents[j] + getN(i - 1) * layerCount);
                 for (uint32 k = 0; k < groups[j]; k++) {
+                    nMap[mnemonicIndex] = parentIndex;
                     mnemonicIndex += 1;
-                    uint256 userKey = vm.deriveKey(mnemonic, mnemonicIndex);
-                    address user = vm.addr(userKey);
-                    nodeManager.bindRootInviter(parent, user);
                 }
             }
+        }
+
+        vm.startBroadcast(deployerPrivateKey);
+
+        for (uint32 i = start; i < end; i++) {
+            uint32 mnemonicIndex = i + startIndex;
+            uint256 userKey = vm.deriveKey(mnemonic, mnemonicIndex);
+            address user = vm.addr(userKey);
+
+            uint32 parentIndex = nMap[mnemonicIndex];
+            if (mnemonicIndex > 100 && parentIndex == 0) {
+                continue;
+            }
+            uint256 parentKey = vm.deriveKey(mnemonic, parentIndex + startIndex);
+            address parent = parentIndex == 0 ? rootInviter : vm.addr(parentKey);
+            nodeManager.bindRootInviter(parent, user);
         }
         vm.stopBroadcast();
     }

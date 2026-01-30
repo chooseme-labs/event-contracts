@@ -110,7 +110,7 @@ interface IStakingManager {
 
     function liquidityProviderClaimReward(uint256 amount) external;
 
-    function addLiquidity(uint256 amount) external;
+    function addLiquidity(uint256 amount, uint256 price) external;
 
     function swapBurn(uint256 amount, uint256 subTokenUAmount) external;
 }

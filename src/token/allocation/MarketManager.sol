@@ -18,24 +18,25 @@ contract MarketManager is Initializable, OwnableUpgradeable, PausableUpgradeable
         _disableInitializers();
     }
 
-    modifier onlyOperator() {
-        require(msg.sender == operator, "MarketManager: caller is not the operator");
+    modifier onlyManager() {
+        require(msg.sender == manager, "onlyManager");
         _;
     }
 
-    modifier onAuthorizedCaller() {
-        require(authorizedCallers.contains(msg.sender), "MarketManager: caller is not authorized");
+    modifier onlyAuthorizedCaller() {
+        require(authorizedCallers.contains(msg.sender), "onlyAuthorizedCaller");
         _;
     }
 
     /**
      * @dev Initialize the DAO Reward Manager contract
      * @param initialOwner Initial owner address
+     * @param _manager Initial manager address
      * @param _token Reward token address (CMT)
      */
-    function initialize(address initialOwner, address _token) public initializer {
+    function initialize(address initialOwner, address _manager, address _token) public initializer {
         __Ownable_init(initialOwner);
-        operator = initialOwner;
+        manager = _manager;
         token = _token;
     }
 
@@ -43,7 +44,7 @@ contract MarketManager is Initializable, OwnableUpgradeable, PausableUpgradeable
      * @dev Add an authorized caller
      * @param caller Address to be authorized
      */
-    function addAuthorizedCaller(address caller) external onlyOperator {
+    function addAuthorizedCaller(address caller) external onlyManager {
         authorizedCallers.add(caller);
     }
 
@@ -51,17 +52,17 @@ contract MarketManager is Initializable, OwnableUpgradeable, PausableUpgradeable
      * @dev Remove an authorized caller
      * @param caller Address to be removed from authorization
      */
-    function removeAuthorizedCaller(address caller) external onlyOperator {
+    function removeAuthorizedCaller(address caller) external onlyManager {
         authorizedCallers.remove(caller);
     }
 
     /**
-     * @dev Set the operator address (only owner can call)
-     * @param _operator New operator address
+     * @dev Set the manager address (only owner can call)
+     * @param _manager New manager address
      */
-    function setOperator(address _operator) external onlyOwner {
-        require(_operator != address(0), "MarketManager: operator cannot be zero address");
-        operator = _operator;
+    function setManager(address _manager) external onlyOwner {
+        require(_manager != address(0), "MarketManager: manager cannot be zero address");
+        manager = _manager;
     }
 
     /**
@@ -69,7 +70,7 @@ contract MarketManager is Initializable, OwnableUpgradeable, PausableUpgradeable
      * @param recipient Recipient address
      * @param amount Withdrawal amount
      */
-    function withdraw(address recipient, uint256 amount) external onAuthorizedCaller {
+    function withdraw(address recipient, uint256 amount) external onlyAuthorizedCaller {
         require(amount <= _tokenBalance(), "AirdropManager: withdraw amount more token balance in this contracts");
 
         IERC20(token).safeTransfer(recipient, amount);

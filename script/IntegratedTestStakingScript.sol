@@ -146,7 +146,7 @@ contract IntegratedTestStakingScript is Script {
             new TransparentUpgradeableProxy(address(eventFundingManagerImpl), address(proxyAdmin), "");
         eventFundingManager = EventFundingManager(payable(address(eventFundingManagerProxy)));
 
-        eventFundingManager.initialize(owner, address(usdt));
+        eventFundingManager.initialize(owner, owner, address(usdt));
         console.log("EventFundingManager deployed at:", address(eventFundingManager));
 
         // Deploy proxy placeholders for StakingManager and NodeManager
@@ -172,7 +172,7 @@ contract IntegratedTestStakingScript is Script {
             new TransparentUpgradeableProxy(address(daoRewardManagerImpl), address(proxyAdmin), "");
         daoRewardManager = DaoRewardManager(payable(address(daoRewardManagerProxy)));
 
-        daoRewardManager.initialize(owner, address(chooseMeToken), address(nodeManager), address(stakingManager));
+        daoRewardManager.initialize(owner, address(chooseMeToken));
         console.log("DaoRewardManager deployed at:", address(daoRewardManager));
 
         // Deploy AirdropManager
@@ -181,11 +181,12 @@ contract IntegratedTestStakingScript is Script {
             new TransparentUpgradeableProxy(address(airdropManagerImpl), address(proxyAdmin), "");
         airdropManager = AirdropManager(payable(address(airdropManagerProxy)));
 
-        airdropManager.initialize(owner, address(chooseMeToken));
+        airdropManager.initialize(owner, owner, address(chooseMeToken));
         console.log("AirdropManager deployed at:", address(airdropManager));
 
         // Initialize StakingManager
         stakingManager.initialize(
+            owner,
             owner,
             address(chooseMeToken),
             address(usdt),
@@ -201,7 +202,7 @@ contract IntegratedTestStakingScript is Script {
         chooseMeToken.setStakingManager(address(stakingManager));
 
         // Initialize NodeManager
-        nodeManager.initialize(owner, address(usdt), distributeRewardAddress);
+        nodeManager.initialize(owner, owner, address(usdt), distributeRewardAddress);
         nodeManager.setConfig(address(chooseMeToken), address(daoRewardManager), address(eventFundingManager));
         console.log("NodeManager initialized");
 
@@ -333,7 +334,7 @@ contract IntegratedTestStakingScript is Script {
         if (stakingManagerUsdtBalance >= liquidityAmount) {
             uint256 deployerPrivateKey = vm.envUint("DEV_PRIVATE_KEY");
             vm.startBroadcast(deployerPrivateKey);
-            stakingManager.addLiquidity(liquidityAmount);
+            stakingManager.addLiquidity(liquidityAmount, 1e18);
             console.log("Successfully added liquidity via StakingManager");
             console.log("Liquidity amount:", liquidityAmount / 10 ** 18, "USDT");
             vm.stopBroadcast();

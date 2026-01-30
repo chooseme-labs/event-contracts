@@ -16,8 +16,13 @@ contract FomoTreasureManager is Initializable, OwnableUpgradeable, PausableUpgra
         _disableInitializers();
     }
 
-    modifier onlyOperator() {
-        require(msg.sender == operator, "FomoTreasureManager: caller is not the operator");
+    modifier onlyManager() {
+        require(msg.sender == manager, "onlyManager");
+        _;
+    }
+
+    modifier onlyFundManager() {
+        require(msg.sender == fundManager, "onlyFundManager");
         _;
     }
 
@@ -32,35 +37,45 @@ contract FomoTreasureManager is Initializable, OwnableUpgradeable, PausableUpgra
     /**
      * @dev Initialize the FOMO Treasure Manager contract
      * @param initialOwner Initial owner address
+     * @param _manager Initial manager address
      * @param _underlyingToken Underlying token address (USDT)
      */
-    function initialize(address initialOwner, address _underlyingToken) public initializer {
+    function initialize(address initialOwner, address _manager, address _underlyingToken) public initializer {
         __Ownable_init(initialOwner);
-        operator = initialOwner;
+        manager = _manager;
         underlyingToken = _underlyingToken;
     }
 
     /**
      * @dev Pause the contract (only operator can call)
      */
-    function pause() external onlyOperator {
+    function pause() external onlyManager {
         _pause();
     }
 
     /**
      * @dev Unpause the contract (only operator can call)
      */
-    function unpause() external onlyOperator {
+    function unpause() external onlyManager {
         _unpause();
     }
 
     /**
-     * @dev Set the operator address (only owner can call)
-     * @param _operator New operator address
+     * @dev Set the manager address (only owner can call)
+     * @param _manager New manager address
      */
-    function setOperator(address _operator) external onlyOwner {
-        require(_operator != address(0), "FomoTreasureManager: operator cannot be zero address");
-        operator = _operator;
+    function setManager(address _manager) external onlyOwner {
+        require(_manager != address(0), "FomoTreasureManager: manager cannot be zero address");
+        manager = _manager;
+    }
+
+    /**
+     * @dev Set the fund manager address (only owner can call)
+     * @param _fundManager New fund manager address
+     */
+    function setFundManager(address _fundManager) external onlyOwner {
+        require(_fundManager != address(0), "FomoTreasureManager: fund manager cannot be zero address");
+        fundManager = _fundManager;
     }
 
     /**
@@ -91,7 +106,13 @@ contract FomoTreasureManager is Initializable, OwnableUpgradeable, PausableUpgra
      * @param amount Withdrawal amount
      * @return Whether the operation was successful
      */
-    function withdraw(address payable withdrawAddress, uint256 amount) external payable whenNotPaused returns (bool) {
+    function withdraw(address payable withdrawAddress, uint256 amount)
+        external
+        payable
+        whenNotPaused
+        onlyFundManager
+        returns (bool)
+    {
         require(
             address(this).balance >= amount,
             "FomoTreasureManager withdraw: insufficient native token balance in contract"
@@ -111,7 +132,7 @@ contract FomoTreasureManager is Initializable, OwnableUpgradeable, PausableUpgra
      * @param amount Withdrawal amount
      * @return Whether the operation was successful
      */
-    function withdrawErc20(address recipient, uint256 amount) external whenNotPaused returns (bool) {
+    function withdrawErc20(address recipient, uint256 amount) external whenNotPaused onlyFundManager returns (bool) {
         require(
             amount <= _tokenBalance(), "FomoTreasureManager: withdraw erc20 amount more token balance in this contracts"
         );

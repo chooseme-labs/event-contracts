@@ -61,4 +61,13 @@ contract EnvContract is Script {
             return string(abi.encodePacked("./cache/__deployed_addresses_prod", ".json"));
         }
     }
+
+    function getCurPrivateKey() public view returns (uint256 deployerPrivateKey) {
+        uint256 mode = vm.envUint("MODE");
+        if (mode == 0) {
+            deployerPrivateKey = vm.envUint("DEV_PRIVATE_KEY");
+        } else {
+            deployerPrivateKey = vm.envUint("PROD_PRIVATE_KEY");
+        }
+    }
 }

@@ -6,14 +6,20 @@ import "@openzeppelin-upgrades/contracts/access/OwnableUpgradeable.sol";
 import "@openzeppelin-upgrades/contracts/utils/PausableUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
-import { EventFundingManagerStorage } from "./EventFundingManagerStorage.sol";
+import {EventFundingManagerStorage} from "./EventFundingManagerStorage.sol";
 
 contract EventFundingManager is Initializable, OwnableUpgradeable, PausableUpgradeable, EventFundingManagerStorage {
     using SafeERC20 for IERC20;
 
-    constructor(){
+    constructor() {
         _disableInitializers();
+    }
+
+    modifier onAuthorizedCaller() {
+        require(EnumerableSet.contains(authorizedCallers, msg.sender), "DaoRewardManager: caller is not authorized");
+        _;
     }
 
     /**
@@ -26,9 +32,14 @@ contract EventFundingManager is Initializable, OwnableUpgradeable, PausableUpgra
      * @param initialOwner Initial owner address
      * @param _usdtTokenAddress USDT token address
      */
-    function initialize(address initialOwner, address _usdtTokenAddress) public initializer  {
+    function initialize(address initialOwner, address _manager, address _usdtTokenAddress) public initializer {
         __Ownable_init(initialOwner);
+        manager = _manager;
         usdtTokenAddress = _usdtTokenAddress;
+    }
+
+    function setManager(address _manager) external onlyOwner {
+        manager = _manager;
     }
 
     /**
@@ -39,21 +50,20 @@ contract EventFundingManager is Initializable, OwnableUpgradeable, PausableUpgra
     function depositUsdt(uint256 amount) external whenNotPaused returns (bool) {
         IERC20(usdtTokenAddress).safeTransferFrom(msg.sender, address(this), amount);
         fundingBalanceForBetting[msg.sender][usdtTokenAddress] += amount;
-        emit DepositUsdt(
-            usdtTokenAddress,
-            msg.sender,
-            amount
-        );
+        emit DepositUsdt(usdtTokenAddress, msg.sender, amount);
         return true;
     }
 
     /**
      * @dev Use funds to bet on event
-     * @param event_pool Event pool address
+     * @param eventPod Event pool address
+     * @param user User address
      * @param amount Betting amount
      */
-    function bettingEvent(address event_pool, uint256 amount) external {
-        require(fundingBalanceForBetting[msg.sender][usdtTokenAddress] >= 0, "amount is zero");
-        // todo betting event
+    function bettingEvent(address eventPod, address user, uint256 amount) external onAuthorizedCaller {
+        require(fundingBalanceForBetting[user][usdtTokenAddress] >= amount, "amount is zero");
+
+        fundingBalanceForBetting[user][usdtTokenAddress] -= amount;
+        IERC20(usdtTokenAddress).safeTransfer(eventPod, amount);
     }
 }

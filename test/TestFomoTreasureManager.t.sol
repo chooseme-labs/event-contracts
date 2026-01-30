@@ -36,18 +36,9 @@ contract FomoTreasureManagerTest is Test {
 
     address public constant NATIVE_TOKEN_ADDRESS = address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
 
-    event Deposit(
-        address indexed tokenAddress,
-        address indexed sender,
-        uint256 amount
-    );
+    event Deposit(address indexed tokenAddress, address indexed sender, uint256 amount);
 
-    event Withdraw(
-        address indexed tokenAddress,
-        address sender,
-        address withdrawAddress,
-        uint256 amount
-    );
+    event Withdraw(address indexed tokenAddress, address sender, address withdrawAddress, uint256 amount);
 
     function setUp() public {
         // Deploy mock tokens
@@ -56,16 +47,12 @@ contract FomoTreasureManagerTest is Test {
 
         // Deploy FomoTreasureManager with proxy
         FomoTreasureManager logic = new FomoTreasureManager();
-        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
-            address(logic),
-            owner,
-            ""
-        );
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(logic), owner, "");
 
         fomoManager = FomoTreasureManager(payable(address(proxy)));
 
         // Initialize FomoTreasureManager
-        fomoManager.initialize(owner, address(mockToken));
+        fomoManager.initialize(owner, owner, address(mockToken));
 
         // Setup user balances
         vm.deal(user1, 100 ether);
@@ -84,7 +71,9 @@ contract FomoTreasureManagerTest is Test {
     function testInitialization() public {
         assertEq(fomoManager.underlyingToken(), address(mockToken), "Underlying token address should be set correctly");
         assertEq(fomoManager.owner(), owner, "Owner should be set correctly");
-        assertEq(fomoManager.NativeTokenAddress(), NATIVE_TOKEN_ADDRESS, "Native token address constant should be correct");
+        assertEq(
+            fomoManager.NativeTokenAddress(), NATIVE_TOKEN_ADDRESS, "Native token address constant should be correct"
+        );
     }
 
     function testDepositNativeToken() public {
@@ -97,7 +86,11 @@ contract FomoTreasureManagerTest is Test {
         bool success = fomoManager.deposit{value: depositAmount}();
 
         assertTrue(success, "Deposit should return true");
-        assertEq(address(fomoManager).balance, contractBalanceBefore + depositAmount, "Contract native balance should increase");
+        assertEq(
+            address(fomoManager).balance,
+            contractBalanceBefore + depositAmount,
+            "Contract native balance should increase"
+        );
         assertEq(fomoManager.FundingBalance(NATIVE_TOKEN_ADDRESS), depositAmount, "FundingBalance should track deposit");
     }
 
@@ -107,11 +100,15 @@ contract FomoTreasureManagerTest is Test {
         vm.prank(user1);
         vm.expectEmit(true, true, false, true);
         emit Deposit(NATIVE_TOKEN_ADDRESS, user1, depositAmount);
-        (bool success, ) = address(fomoManager).call{value: depositAmount}("");
+        (bool success,) = address(fomoManager).call{value: depositAmount}("");
 
         assertTrue(success, "Direct transfer should succeed");
         assertEq(address(fomoManager).balance, depositAmount, "Contract should have received native token");
-        assertEq(fomoManager.FundingBalance(NATIVE_TOKEN_ADDRESS), depositAmount, "FundingBalance should track received amount");
+        assertEq(
+            fomoManager.FundingBalance(NATIVE_TOKEN_ADDRESS),
+            depositAmount,
+            "FundingBalance should track received amount"
+        );
     }
 
     function testDepositNativeTokenMultipleTimes() public {
@@ -126,7 +123,11 @@ contract FomoTreasureManagerTest is Test {
         vm.prank(user2);
         fomoManager.deposit{value: depositAmount2}();
 
-        assertEq(fomoManager.FundingBalance(NATIVE_TOKEN_ADDRESS), depositAmount1 + depositAmount2, "Multiple deposits should accumulate");
+        assertEq(
+            fomoManager.FundingBalance(NATIVE_TOKEN_ADDRESS),
+            depositAmount1 + depositAmount2,
+            "Multiple deposits should accumulate"
+        );
     }
 
     function testDepositErc20() public {
@@ -141,8 +142,14 @@ contract FomoTreasureManagerTest is Test {
 
         assertTrue(success, "ERC20 deposit should return true");
         assertEq(mockToken.balanceOf(user1), userBalanceBefore - depositAmount, "User balance should decrease");
-        assertEq(mockToken.balanceOf(address(fomoManager)), contractBalanceBefore + depositAmount, "Contract balance should increase");
-        assertEq(fomoManager.FundingBalance(address(mockToken)), depositAmount, "FundingBalance should track ERC20 deposit");
+        assertEq(
+            mockToken.balanceOf(address(fomoManager)),
+            contractBalanceBefore + depositAmount,
+            "Contract balance should increase"
+        );
+        assertEq(
+            fomoManager.FundingBalance(address(mockToken)), depositAmount, "FundingBalance should track ERC20 deposit"
+        );
     }
 
     function testDepositErc20MultipleTimes() public {
@@ -152,12 +159,18 @@ contract FomoTreasureManagerTest is Test {
         vm.prank(user1);
         fomoManager.depositErc20(depositAmount1);
 
-        assertEq(fomoManager.FundingBalance(address(mockToken)), depositAmount1, "First ERC20 deposit should be tracked");
+        assertEq(
+            fomoManager.FundingBalance(address(mockToken)), depositAmount1, "First ERC20 deposit should be tracked"
+        );
 
         vm.prank(user2);
         fomoManager.depositErc20(depositAmount2);
 
-        assertEq(fomoManager.FundingBalance(address(mockToken)), depositAmount1 + depositAmount2, "Multiple ERC20 deposits should accumulate");
+        assertEq(
+            fomoManager.FundingBalance(address(mockToken)),
+            depositAmount1 + depositAmount2,
+            "Multiple ERC20 deposits should accumulate"
+        );
     }
 
     function testWithdrawNativeToken() public {
@@ -176,7 +189,11 @@ contract FomoTreasureManagerTest is Test {
 
         assertTrue(success, "Withdraw should return true");
         assertEq(recipient.balance, recipientBalanceBefore + withdrawAmount, "Recipient should receive native tokens");
-        assertEq(fomoManager.FundingBalance(NATIVE_TOKEN_ADDRESS), depositAmount - withdrawAmount, "FundingBalance should decrease");
+        assertEq(
+            fomoManager.FundingBalance(NATIVE_TOKEN_ADDRESS),
+            depositAmount - withdrawAmount,
+            "FundingBalance should decrease"
+        );
     }
 
     function testWithdrawNativeTokenMultipleTimes() public {
@@ -224,9 +241,21 @@ contract FomoTreasureManagerTest is Test {
         bool success = fomoManager.withdrawErc20(recipient, withdrawAmount);
 
         assertTrue(success, "ERC20 withdraw should return true");
-        assertEq(mockToken.balanceOf(recipient), recipientBalanceBefore + withdrawAmount, "Recipient should receive mockToken (underlyingToken)");
-        assertEq(mockToken.balanceOf(address(fomoManager)), contractBalanceBefore - withdrawAmount, "Contract balance should decrease");
-        assertEq(fomoManager.FundingBalance(address(mockToken)), depositAmount - withdrawAmount, "FundingBalance should decrease");
+        assertEq(
+            mockToken.balanceOf(recipient),
+            recipientBalanceBefore + withdrawAmount,
+            "Recipient should receive mockToken (underlyingToken)"
+        );
+        assertEq(
+            mockToken.balanceOf(address(fomoManager)),
+            contractBalanceBefore - withdrawAmount,
+            "Contract balance should decrease"
+        );
+        assertEq(
+            fomoManager.FundingBalance(address(mockToken)),
+            depositAmount - withdrawAmount,
+            "FundingBalance should decrease"
+        );
     }
 
     function testWithdrawErc20RevertsOnInsufficientBalance() public {
@@ -253,14 +282,18 @@ contract FomoTreasureManagerTest is Test {
         vm.prank(user1);
         fomoManager.depositErc20(erc20Deposit);
 
-        assertEq(fomoManager.FundingBalance(NATIVE_TOKEN_ADDRESS), nativeDeposit, "Native token balance should be tracked");
+        assertEq(
+            fomoManager.FundingBalance(NATIVE_TOKEN_ADDRESS), nativeDeposit, "Native token balance should be tracked"
+        );
         assertEq(fomoManager.FundingBalance(address(mockToken)), erc20Deposit, "ERC20 balance should be tracked");
 
         // Withdraw native
         vm.prank(user1);
         fomoManager.withdraw(payable(recipient), 2 ether);
 
-        assertEq(fomoManager.FundingBalance(NATIVE_TOKEN_ADDRESS), 3 ether, "Native balance should decrease after withdraw");
+        assertEq(
+            fomoManager.FundingBalance(NATIVE_TOKEN_ADDRESS), 3 ether, "Native balance should decrease after withdraw"
+        );
         assertEq(fomoManager.FundingBalance(address(mockToken)), erc20Deposit, "ERC20 balance should remain unchanged");
     }
 

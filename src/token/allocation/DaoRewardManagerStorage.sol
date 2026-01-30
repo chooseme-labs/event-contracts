@@ -4,10 +4,9 @@ pragma solidity ^0.8.0;
 import "../../interfaces/token/IDaoRewardManager.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
-
 abstract contract DaoRewardManagerStorage is IDaoRewardManager {
-
     address public rewardTokenAddress;
+    address public manager;
 
     EnumerableSet.AddressSet internal authorizedCallers;
 

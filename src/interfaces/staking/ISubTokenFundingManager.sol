@@ -8,8 +8,8 @@ interface ISubTokenFundingManager {
     // View Functions
     function V2_ROUTER() external view returns (address);
     function USDT() external view returns (address);
-    function operatorManager() external view returns (address);
+    function manager() external view returns (address);
 
     // External Functions
-    function addLiquidity(uint256 amount) external;
+    function addLiquidity(uint256 amount, uint256 price) external;
 }

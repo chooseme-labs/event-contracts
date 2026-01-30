@@ -128,8 +128,6 @@ contract DeployStakingScript is Script, EnvContract {
             address usdtTokenAddress
         ) = getENVAddress();
 
-        (,,, address proxyNodeManagerD,,,,,,) = getAddresses();
-
         vm.startBroadcast(deployerPrivateKey);
 
         emptyContract = new EmptyContract();
@@ -140,7 +138,8 @@ contract DeployStakingScript is Script, EnvContract {
         chooseMeTokenImplementation = new ChooseMeToken();
         chooseMeTokenProxyAdmin = ProxyAdmin(getProxyAdminAddress(address(proxyChooseMeToken)));
 
-        TransparentUpgradeableProxy proxyNodeManager = TransparentUpgradeableProxy(payable(proxyNodeManagerD));
+        TransparentUpgradeableProxy proxyNodeManager =
+            new TransparentUpgradeableProxy(address(emptyContract), chooseMeMultiSign, "");
         nodeManager = NodeManager(payable(address(proxyNodeManager)));
         nodeManagerImplementation = new NodeManager();
         nodeManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(address(proxyNodeManager)));
@@ -195,7 +194,20 @@ contract DeployStakingScript is Script, EnvContract {
             )
         );
 
+        nodeManagerProxyAdmin.upgradeAndCall(
+            ITransparentUpgradeableProxy(address(nodeManager)),
+            address(nodeManagerImplementation),
+            abi.encodeWithSelector(
+                NodeManager.initialize.selector, chooseMeMultiSign, usdtTokenAddress, distributeRewardAddress
+            )
+        );
+
         nodeManager.setConfig(address(chooseMeToken), address(proxyDaoRewardManager), address(proxyEventFundingManager));
+
+        (address user1, address user2, address user3, address user4) = getTopUser();
+        nodeManager.bindRootInviter(user1, user2);
+        nodeManager.bindRootInviter(user2, user3);
+        nodeManager.bindRootInviter(user3, user4);
 
         stakingManagerProxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(address(stakingManager)),
@@ -216,14 +228,11 @@ contract DeployStakingScript is Script, EnvContract {
         daoRewardManagerProxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(address(daoRewardManager)),
             address(daoRewardManagerImplementation),
-            abi.encodeWithSelector(
-                DaoRewardManager.initialize.selector,
-                chooseMeMultiSign,
-                address(chooseMeToken),
-                address(nodeManager),
-                address(stakingManager)
-            )
+            abi.encodeWithSelector(DaoRewardManager.initialize.selector, chooseMeMultiSign, address(chooseMeToken))
         );
+
+        daoRewardManager.setAuthorizedCaller(address(nodeManager), true);
+        daoRewardManager.setAuthorizedCaller(address(stakingManager), true);
 
         fomoTreasureManagerProxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(address(fomoTreasureManager)),
@@ -390,13 +399,8 @@ contract DeployStakingScript is Script, EnvContract {
         return address(uint160(uint256(adminSlot)));
     }
 
-    function getCurPrivateKey() public returns (uint256) {
-        uint256 mode = vm.envUint("MODE");
-        if (mode == 0) {
-            deployerPrivateKey = vm.envUint("DEV_PRIVATE_KEY");
-        } else {
-            deployerPrivateKey = vm.envUint("PROD_PRIVATE_KEY");
-        }
+    function _getCurPrivateKey() public returns (uint256) {
+        deployerPrivateKey = super.getCurPrivateKey();
     }
 
     function getENVAddress()
@@ -408,7 +412,7 @@ contract DeployStakingScript is Script, EnvContract {
             address usdtTokenAddress
         )
     {
-        getCurPrivateKey();
+        _getCurPrivateKey();
 
         uint256 mode = vm.envUint("MODE");
         console.log("mode:", mode == 0 ? "development" : "production");

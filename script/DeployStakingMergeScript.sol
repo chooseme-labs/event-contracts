@@ -1,0 +1,106 @@
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.20;
+
+import "forge-std/Vm.sol";
+import {Script, console} from "forge-std/Script.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
+import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
+
+import {EmptyContract} from "../src/utils/EmptyContract.sol";
+import {IChooseMeToken} from "../src/interfaces/token/IChooseMeToken.sol";
+import {ChooseMeToken} from "../src/token/ChooseMeToken.sol";
+import {DaoRewardManager} from "../src/token/allocation/DaoRewardManager.sol";
+import {FomoTreasureManager} from "../src/token/allocation/FomoTreasureManager.sol";
+import {AirdropManager} from "../src/token/allocation/AirdropManager.sol";
+import {MarketManager} from "../src/token/allocation/MarketManager.sol";
+import {NodeManager} from "../src/staking/NodeManager.sol";
+import {StakingManager} from "../src/staking/StakingManager.sol";
+import {EventFundingManager} from "../src/staking/EventFundingManager.sol";
+import {SubTokenFundingManager} from "../src/staking/SubTokenFundingManager.sol";
+
+import "./InitContract.sol";
+
+contract DeployStakingMergeScript is Script, InitContract {
+    uint256 deployerPrivateKey;
+
+    // MODE=1 forge script DeployStakingMergeScript --rpc-url https://go.getblock.asia/cd2737b83bed4b529f2b29001024b1b8 --broadcast --slow --multi --sig "mergeInviters(uint256)"
+    function mergeInviters(uint256 start) public {
+        initContracts();
+        deployerPrivateKey = getCurPrivateKey();
+        uint256 max = 100;
+        uint256 step = 10;
+
+        string memory json = vm.readFile("cache/__users.json");
+        address[] memory _users = new address[](step);
+        address[] memory _inviters = new address[](step);
+        uint256 curI = 0;
+
+        for (uint256 i = 0; i < step; i++) {
+            address user = vm.parseJsonAddress(json, string(abi.encodePacked("[", Strings.toString(start + i), "]")));
+            address inviter = nodeManager.inviters(user);
+            console.log("user:", user, "inviter:", inviter);
+            if (inviter != address(0)) {
+                _users[curI] = user;
+                _inviters[curI] = inviter;
+                curI++;
+            }
+        }
+
+        address[] memory users = new address[](curI);
+        address[] memory inviters = new address[](curI);
+
+        for (uint256 i = 0; i < curI; i++) {
+            users[i] = _users[i];
+            inviters[i] = _inviters[i];
+        }
+
+        console.log("123123", users.length);
+
+        // vm.startBroadcast(deployerPrivateKey);
+        // nodeManager.bindInviterBatch(inviters, users);
+        // vm.stopBroadcast();
+    }
+
+    // MODE=1 forge script DeployStakingMergeScript --rpc-url https://go.getblock.asia/cd2737b83bed4b529f2b29001024b1b8 --broadcast --slow --multi --sig "mergeNodes(uint256)" 0
+    function mergeNodes(uint256 start) public {
+        initContracts();
+        deployerPrivateKey = getCurPrivateKey();
+        uint256 max = 100;
+        uint256 step = 10;
+
+        NodeManager nodeManagerOld = NodeManager(0x9527e8Fce047226Cf666289d9C93E5C334Ca0B79);
+
+        string memory json = vm.readFile("cache/__users.json");
+
+        uint256 i = 0;
+        address[] memory _users = new address[](step);
+        uint256[] memory _amouts = new uint256[](step);
+        uint256 curI = 0;
+
+        while (i < step) {
+            address user = vm.parseJsonAddress(json, string(abi.encodePacked("[", Strings.toString(start + i), "]")));
+            (address buyer, uint8 nodeType, uint256 amount) = nodeManagerOld.nodeBuyerInfo(user);
+            if (buyer != address(0)) {
+                _users[curI] = user;
+                _amouts[curI] = amount;
+                curI++;
+            }
+            i++;
+        }
+
+        address[] memory users = new address[](curI);
+        uint256[] memory amouts = new uint256[](curI);
+
+        for (uint256 i = 0; i < curI; i++) {
+            users[i] = _users[i];
+            amouts[i] = _amouts[i];
+        }
+        console.log("123123", users.length);
+
+        // vm.startBroadcast(deployerPrivateKey);
+        // nodeManager.batchCreateNode(users, amouts);
+        // vm.stopBroadcast();
+    }
+}

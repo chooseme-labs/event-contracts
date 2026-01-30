@@ -44,6 +44,8 @@ contract InitContract is EnvContract {
     AirdropManager public airdropManager;
 
     IPancakeV2Router public pancakeRouter;
+    IPancakeV2Factory public pancakeFactory;
+    IPancakeV2Pair public pancakePair;
 
     function initContracts() internal {
         (
@@ -71,5 +73,7 @@ contract InitContract is EnvContract {
         airdropManager = AirdropManager(payable(proxyAirdropManager));
 
         pancakeRouter = IPancakeV2Router(0x10ED43C718714eb63d5aA57B78B54704E256024E); // PancakeSwap Router V2
+        pancakeFactory = IPancakeV2Factory(pancakeRouter.factory());
+        pancakePair = IPancakeV2Pair(pancakeFactory.getPair(address(usdt), address(chooseMeToken)));
     }
 }

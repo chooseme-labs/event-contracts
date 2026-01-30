@@ -44,7 +44,8 @@ contract DaoRewardManagerTest is Test {
         daoRewardManager = DaoRewardManager(payable(address(proxy)));
 
         // Initialize DaoRewardManager
-        daoRewardManager.initialize(owner, address(mockToken), caller, caller);
+        daoRewardManager.initialize(owner, address(mockToken));
+        daoRewardManager.setAuthorizedCaller(caller, true);
 
         // Transfer tokens to DaoRewardManager
         mockToken.transfer(address(daoRewardManager), 1000000 * 10 ** 18);

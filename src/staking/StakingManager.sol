@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 import "@openzeppelin-upgrades/contracts/proxy/utils/Initializable.sol";
 import "@openzeppelin-upgrades/contracts/access/OwnableUpgradeable.sol";
 import "@openzeppelin-upgrades/contracts/utils/PausableUpgradeable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -15,7 +16,13 @@ import "../utils/SwapHelper.sol";
 
 import {StakingManagerStorage} from "./StakingManagerStorage.sol";
 
-contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeable, StakingManagerStorage {
+contract StakingManager is
+    Initializable,
+    OwnableUpgradeable,
+    PausableUpgradeable,
+    ReentrancyGuard,
+    StakingManagerStorage
+{
     using SafeERC20 for IERC20;
     using SwapHelper for *;
 
@@ -23,8 +30,8 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
         _disableInitializers();
     }
 
-    modifier onlyOperator() {
-        require(msg.sender == operator, "StakingManager: caller is not the operator");
+    modifier onlyManager() {
+        require(msg.sender == manager, "StakingManager: caller is not the manager");
         _;
     }
 
@@ -41,6 +48,7 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
     /**
      * @dev Initialize the Staking Manager contract
      * @param initialOwner Initial owner address
+     * @param initialManager Initial manager address
      * @param _underlyingToken Underlying token address (CMT)
      * @param _stakingOperatorManager Staking operator manager address
      * @param _daoRewardManager DAO reward manager contract address
@@ -48,6 +56,7 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
      */
     function initialize(
         address initialOwner,
+        address initialManager,
         address _underlyingToken,
         address _usdt,
         address _stakingOperatorManager,
@@ -57,7 +66,7 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
         address _subTokenFundingManager
     ) public initializer {
         __Ownable_init(initialOwner);
-        operator = initialOwner;
+        manager = initialManager;
         underlyingToken = _underlyingToken;
         USDT = _usdt;
         stakingOperatorManager = _stakingOperatorManager;
@@ -67,17 +76,17 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
         subTokenFundingManager = _subTokenFundingManager;
     }
 
-    function setUnderlyingToken(address _underlyingToken) external onlyOperator {
+    function setUnderlyingToken(address _underlyingToken) external onlyManager {
         underlyingToken = _underlyingToken;
     }
 
     /**
-     * @dev Set the operator address (only owner can call)
-     * @param _operator New operator address
+     * @dev Set the manager address (only owner can call)
+     * @param _manager New manager address
      */
-    function setOperator(address _operator) external onlyOwner {
-        require(_operator != address(0), "StakingManager: operator cannot be zero address");
-        operator = _operator;
+    function setManager(address _manager) external onlyOwner {
+        require(_manager != address(0), "StakingManager: manager cannot be zero address");
+        manager = _manager;
     }
 
     /**
@@ -238,7 +247,7 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
      * @param amount Reward amount to claim
      * @notice 20% of rewards will be forcibly withheld and converted to USDT for deposit into event prediction market
      */
-    function liquidityProviderClaimReward(uint256 amount) external {
+    function liquidityProviderClaimReward(uint256 amount) external nonReentrant {
         require(amount > 0, "StakingManager.liquidityProviderClaimReward: reward amount must more than zero");
 
         if (amount > totalLpStakingReward[msg.sender].totalReward - totalLpStakingReward[msg.sender].claimedReward) {
@@ -253,7 +262,7 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
             daoRewardManager.withdraw(address(this), toEventPredictionAmount);
 
             uint256 usdtAmount =
-                SwapHelper.swapV2(V2_ROUTER, underlyingToken, USDT, toEventPredictionAmount, address(this));
+                SwapHelper.swapV2(V2_ROUTER, underlyingToken, USDT, toEventPredictionAmount, 0, address(this));
             IERC20(USDT).approve(address(eventFundingManager), usdtAmount);
             eventFundingManager.depositUsdt(usdtAmount);
         }
@@ -274,12 +283,11 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
      * @param amount Total amount of USDT to add
      * @notice Convert 50% of USDT to underlying token, then add liquidity to V2
      */
-    function addLiquidity(uint256 amount) external onlyStakingOperatorManager {
+    function addLiquidity(uint256 amount, uint256 price) external onlyStakingOperatorManager {
         require(amount > 0, "Amount must be greater than 0");
 
         (uint256 liquidityAdded, uint256 amount0Used, uint256 amount1Used) =
-            SwapHelper.addLiquidityV2(V2_ROUTER, USDT, underlyingToken, amount, address(this));
-
+            SwapHelper.addLiquidityV2(V2_ROUTER, USDT, underlyingToken, amount, price, address(this));
         emit LiquidityAdded(liquidityAdded, amount0Used, amount1Used);
     }
 
@@ -290,7 +298,7 @@ contract StakingManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
     function swapBurn(uint256 amount, uint256 subTokenUAmount) external onlyStakingOperatorManager {
         require(amount > 0, "Amount must be greater than 0");
 
-        uint256 underlyingTokenReceived = SwapHelper.swapV2(V2_ROUTER, USDT, underlyingToken, amount, address(this));
+        uint256 underlyingTokenReceived = SwapHelper.swapV2(V2_ROUTER, USDT, underlyingToken, amount, 0, address(this));
         require(underlyingTokenReceived > 0, "No tokens received from swap");
         IChooseMeToken(underlyingToken).burn(address(this), underlyingTokenReceived);
 

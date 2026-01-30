@@ -14,14 +14,17 @@ library SwapHelper {
      * @param to Address to receive output tokens
      * @return Amount of output tokens received
      */
-    function swapV2(address router, address tokenIn, address tokenOut, uint256 amount, address to) internal returns (uint256) {
+    function swapV2(address router, address tokenIn, address tokenOut, uint256 amount, uint256 amountOutMin, address to)
+        internal
+        returns (uint256)
+    {
         uint256 balOld = IERC20(tokenOut).balanceOf(to);
         IERC20(tokenIn).approve(router, amount);
         address[] memory path = new address[](2);
         path[0] = tokenIn;
         path[1] = tokenOut;
         IPancakeRouter02(router)
-            .swapExactTokensForTokensSupportingFeeOnTransferTokens(amount, 1, path, to, block.timestamp + 20);
+            .swapExactTokensForTokensSupportingFeeOnTransferTokens(amount, amountOutMin, path, to, block.timestamp + 20);
         uint256 balNew = IERC20(tokenOut).balanceOf(to);
         return balNew - balOld;
     }
@@ -37,18 +40,26 @@ library SwapHelper {
      * @return amount0Used Amount of token0 used
      * @return amount1Used Amount of token1 used
      */
-    function addLiquidityV2(
-        address router,
-        address token0,
-        address token1,
-        uint256 amount,
-        address to
-    ) internal returns (uint256 liquidityAdded, uint256 amount0Used, uint256 amount1Used) {
-        uint token0Amount = amount / 2;
-        uint token1Amount = SwapHelper.swapV2(router, token0, token1, token0Amount, address(this));
+    function addLiquidityV2(address router, address token0, address token1, uint256 amount, uint256 price, address to)
+        internal
+        returns (uint256 liquidityAdded, uint256 amount0Used, uint256 amount1Used)
+    {
+        uint256 token0Amount = amount / 2;
+        uint256 expectedToken1Amount = (token0Amount * price * 50) / 100 / 1e18;
+        uint256 token1Amount =
+            SwapHelper.swapV2(router, token0, token1, token0Amount, expectedToken1Amount, address(this));
         IERC20(token0).approve(router, token0Amount);
         IERC20(token1).approve(router, token1Amount);
-        (amount0Used,amount1Used, liquidityAdded) =
-            IPancakeRouter02(router).addLiquidity(token0, token1, token0Amount, token1Amount, 0, 0, to, block.timestamp);
+        (amount0Used, amount1Used, liquidityAdded) = IPancakeRouter02(router)
+            .addLiquidity(
+                token0,
+                token1,
+                token0Amount,
+                token1Amount,
+                token0Amount * 50 / 100,
+                token1Amount * 50 / 100,
+                to,
+                block.timestamp
+            );
     }
 }

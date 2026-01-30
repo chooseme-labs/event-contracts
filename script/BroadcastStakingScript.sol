@@ -32,6 +32,9 @@ contract BroadcastStakingScript is InitContract {
         user5PrivateKey = vm.deriveKey(mnemonic, 5);
 
         initContracts();
+
+        initChooseMeToken();
+        addLiquidity();
     }
 
     function initChooseMeToken() internal {
@@ -76,8 +79,8 @@ contract BroadcastStakingScript is InitContract {
         vm.startBroadcast(deployerPrivateKey);
 
         // Set liquidity amounts (can be adjusted as needed)
-        uint256 cmtAmount = 1_000_000 * cmtDecimals;
-        uint256 usdtAmount = 100_000 * usdtDecimals;
+        uint256 cmtAmount = 1_000_000_00 * cmtDecimals;
+        uint256 usdtAmount = 200_000 * usdtDecimals;
 
         // Approve tokens to router
         chooseMeToken.approve(address(pancakeRouter), cmtAmount);
@@ -352,7 +355,7 @@ contract BroadcastStakingScript is InitContract {
         uint256 usdtBalance = usdt.balanceOf(address(stakingManager));
         require(usdtBalance >= liquidityAmount, "Insufficient USDT balance for liquidity");
 
-        stakingManager.addLiquidity(liquidityAmount);
+        stakingManager.addLiquidity(liquidityAmount, 1e18);
         console.log("Liquidity added successfully");
 
         vm.stopBroadcast();

@@ -7,7 +7,8 @@ abstract contract FomoTreasureManagerStorage is IFomoTreasureManager {
     address public constant NativeTokenAddress = address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
 
     address public underlyingToken;
-    address public operator;
+    address public manager;
+    address public fundManager;
 
     mapping(address => uint256) public FundingBalance;
 

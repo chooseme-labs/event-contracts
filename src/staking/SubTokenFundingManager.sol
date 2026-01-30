@@ -23,12 +23,12 @@ contract SubTokenFundingManager is
     }
 
     modifier onlyOperator() {
-        require(msg.sender == operator, "SubTokenFundingManager: caller is not the operator");
+        require(msg.sender == operator, "onlyOperator");
         _;
     }
 
-    modifier onlyOperatorManager() {
-        require(msg.sender == address(operatorManager), "operatorManager");
+    modifier onlyManager() {
+        require(msg.sender == address(manager), "onlyManager");
         _;
     }
 
@@ -42,13 +42,14 @@ contract SubTokenFundingManager is
      * @param initialOwner Initial owner address
      * @param _usdt USDT token address
      */
-    function initialize(address initialOwner, address _usdt) public initializer {
+    function initialize(address initialOwner, address _manager, address _operator, address _usdt) public initializer {
         __Ownable_init(initialOwner);
-        operator = initialOwner;
+        operator = _operator;
+        manager = _manager;
         USDT = _usdt;
     }
 
-    function setSubToken(address _subToken) external onlyOperator {
+    function setSubToken(address _subToken) external onlyManager {
         subToken = _subToken;
     }
 
@@ -56,21 +57,30 @@ contract SubTokenFundingManager is
      * @dev Set the operator address (only owner can call)
      * @param _operator New operator address
      */
-    function setOperator(address _operator) external onlyOwner {
+    function setOperator(address _operator) external onlyManager {
         require(_operator != address(0), "SubTokenFundingManager: operator cannot be zero address");
         operator = _operator;
+    }
+
+    /**
+     * @dev Set the manager address (only owner can call)
+     * @param _manager New manager address
+     */
+    function setManager(address _manager) external onlyOwner {
+        require(_manager != address(0), "SubTokenFundingManager: manager cannot be zero address");
+        manager = _manager;
     }
 
     /**
      * @dev Add liquidity to trading pool
      * @param amount Amount of underlying token to add to liquidity pool
      */
-    function addLiquidity(uint256 amount) external onlyOperatorManager {
+    function addLiquidity(uint256 amount, uint256 price) external onlyOperator {
         require(amount > 0, "Amount must be greater than 0");
         require(amount <= IERC20(USDT).balanceOf(address(this)), "Insufficient balance");
 
         (uint256 liquidityAdded, uint256 amount0Used, uint256 amount1Used) =
-            SwapHelper.addLiquidityV2(V2_ROUTER, USDT, subToken, amount, address(this));
+            SwapHelper.addLiquidityV2(V2_ROUTER, USDT, subToken, amount, price, address(this));
 
         emit LiquidityAdded(liquidityAdded, amount0Used, amount1Used);
     }

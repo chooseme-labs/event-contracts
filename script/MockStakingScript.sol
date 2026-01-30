@@ -9,10 +9,12 @@ import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.so
 
 import "./InitContract.sol";
 
-// MODE=1 forge script MockStakingScript --slow --multi --rpc-url https://go.getblock.asia/cd2737b83bed4b529f2b29001024b1b8 --broadcast
+// forge script MockStakingScript --slow --multi --rpc-url https://go.getblock.asia/cd2737b83bed4b529f2b29001024b1b8 --broadcast
 contract MockStakingScript is InitContract {
     function run() public {}
 
+    // forge script MockStakingScript --slow --multi --rpc-url https://go.getblock.asia/cd2737b83bed4b529f2b29001024b1b8 --broadcast --sig "buyStaking(uint32,uint32)"
+    // 40
     function buyStaking(uint32 start, uint32 end) public {
         initContracts();
 
@@ -50,8 +52,43 @@ contract MockStakingScript is InitContract {
         }
     }
 
+    // forge script MockStakingScript --slow --multi --rpc-url https://go.getblock.asia/cd2737b83bed4b529f2b29001024b1b8 --broadcast --sig "buyNode(uint32,uint32)"
+    function buyNode(uint32 start, uint32 end) public {
+        initContracts();
+
+        string memory mnemonic = vm.envString("DEV_MNEMONIC");
+        uint256 deployerPrivateKey = vm.envUint("DEV_PRIVATE_KEY");
+        uint32 startIndex = 10;
+
+        uint256[] memory amounts = new uint256[](2);
+        amounts[0] = nodeManager.buyDistributedNode();
+        amounts[1] = nodeManager.buyClusterNode();
+
+        for (uint32 i = start; i < end; i++) {
+            uint32 mnemonicIndex = i + startIndex;
+            uint256 userKey = vm.deriveKey(mnemonic, mnemonicIndex);
+            address user = vm.addr(userKey);
+            address inviter = nodeManager.inviters(user);
+
+            if (inviter == address(0)) {
+                continue;
+            }
+            uint256 amount = amounts[i % 2];
+            vm.startBroadcast(deployerPrivateKey);
+            usdt.transfer(user, amount);
+            payable(user).transfer(0.00004 ether);
+            vm.stopBroadcast();
+
+            vm.startBroadcast(userKey);
+            usdt.approve(address(nodeManager), amount);
+            nodeManager.purchaseNode(amount);
+            vm.stopBroadcast();
+        }
+    }
+
     mapping(uint32 => uint32) internal nMap;
 
+    // forge script MockStakingScript --slow --multi --rpc-url https://go.getblock.asia/cd2737b83bed4b529f2b29001024b1b8 --broadcast --sig "bindUser(uint32,uint32)"
     function bindUser(uint32 start, uint32 end) public {
         initContracts();
 

@@ -321,7 +321,7 @@ contract DeployStakingScript is Script, EnvContract {
     // MODE=1 forge script DeployStakingScript --sig "update()"  --slow --multi --rpc-url https://go.getblock.asia/cd2737b83bed4b529f2b29001024b1b8 --broadcast --verify --etherscan-api-key I4C1AKJT8J9KJVCXHZKK317T3XV8IVASRX
     function update() public {
         initContracts();
-        getCurPrivateKey();
+        _getCurPrivateKey();
 
         vm.startBroadcast(deployerPrivateKey);
 

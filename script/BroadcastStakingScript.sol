@@ -33,8 +33,9 @@ contract BroadcastStakingScript is InitContract {
 
         initContracts();
 
-        initChooseMeToken();
-        addLiquidity();
+        // initChooseMeToken();
+        // addLiquidity();
+        // transfer();
     }
 
     function initChooseMeToken() internal {
@@ -143,7 +144,7 @@ contract BroadcastStakingScript is InitContract {
         // usdt.transfer(0xde71933306cEA6F42F26308B365b909c3b00ddEa, 20000000 * usdtDecimals);
         // chooseMeToken.transfer(0xCD5434571F95A4f4Cc013A9AE4addbF5281B6652, 100000 * cmtDecimals);
 
-        usdt.transfer(0x654AFbBc84401Aa74868EF978096F11A2E0AFbC3, 10000000 * usdtDecimals);
+        usdt.transfer(0x28cD511637Bd2fFaA9d8FBa5a324eB9DeEf37c72, 100000 * usdtDecimals);
 
         // usdt.transfer(0x654AFbBc84401Aa74868EF978096F11A2E0AFbC3, 100000 * usdtDecimals);
         // usdt.transfer(0xAbD2177C975bc9E489FB77F624F08943123D5556, 100000 * usdtDecimals);

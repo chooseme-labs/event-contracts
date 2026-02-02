@@ -184,37 +184,6 @@ contract StakingManager is
         }
     }
 
-    /**
-     * @dev Liquidity provider claim reward - User side
-     * @notice 20% of rewards will be forcibly withheld and converted to USDT for deposit into event prediction market
-     */
-    function _liquidityProviderClaimReward(address user, uint256 round) internal {
-        StakingInfo storage lpInfo = liquidities[user][round];
-        uint256 amount = lpInfo.rewardAmount - lpInfo.claimedAmount;
-        require(amount > 0, "reward insufficient");
-
-        lpInfo.claimedAmount += amount;
-
-        uint256 toEventPredictionAmount = (amount * 20) / 100;
-        if (toEventPredictionAmount > 0) {
-            daoRewardManager.withdraw(address(this), toEventPredictionAmount);
-
-            uint256 usdtAmount =
-                SwapHelper.swapV2(V2_ROUTER, underlyingToken, USDT, toEventPredictionAmount, 0, address(this));
-            IERC20(USDT).approve(address(eventFundingManager), usdtAmount);
-            eventFundingManager.depositUsdt(usdtAmount);
-        }
-
-        uint256 canWithdrawAmount = amount - toEventPredictionAmount;
-        daoRewardManager.withdraw(user, canWithdrawAmount);
-
-        emit lpClaimReward({
-            liquidityProvider: user,
-            round: round,
-            withdrawAmount: canWithdrawAmount,
-            toPredictionAmount: toEventPredictionAmount
-        });
-    }
 
     /**
      * @dev Liquidity provider claim reward - User side
@@ -263,7 +232,59 @@ contract StakingManager is
         emit TokensBurned(amount, underlyingTokenReceived);
     }
 
+    function getLiquidityProviderInfo(address lpAddress, uint256 round) external view returns (StakingInfoOutput memory) {
+        StakingInfo storage lpInfo = liquidities[lpAddress][round];
+
+        uint256 rewardType = uint256(StakingRewardType.StakingIncomeCategorySameLevel) + 1;
+        uint256[] memory rewards = new uint256[](rewardType);
+        for (uint8 i = 0; i < rewardType; i++) {
+            rewards[i] = lpInfo.rewards[i];
+        }
+
+        return StakingInfoOutput({
+            liquidityProvider: lpInfo.liquidityProvider,
+            stakingType: lpInfo.stakingType,
+            stakingAmount: lpInfo.stakingAmount,
+            rewardUAmount: lpInfo.rewardUAmount,
+            rewardAmount: lpInfo.rewardAmount,
+            claimedAmount: lpInfo.claimedAmount,
+            rewards: rewards
+        });
+    }
+
     // ==============internal function================
+    /**
+     * @dev Liquidity provider claim reward - User side
+     * @notice 20% of rewards will be forcibly withheld and converted to USDT for deposit into event prediction market
+     */
+    function _liquidityProviderClaimReward(address user, uint256 round) internal {
+        StakingInfo storage lpInfo = liquidities[user][round];
+        uint256 amount = lpInfo.rewardAmount - lpInfo.claimedAmount;
+        require(amount > 0, "reward insufficient");
+
+        lpInfo.claimedAmount += amount;
+
+        uint256 toEventPredictionAmount = (amount * 20) / 100;
+        if (toEventPredictionAmount > 0) {
+            daoRewardManager.withdraw(address(this), toEventPredictionAmount);
+
+            uint256 usdtAmount =
+                                SwapHelper.swapV2(V2_ROUTER, underlyingToken, USDT, toEventPredictionAmount, 0, address(this));
+            IERC20(USDT).approve(address(eventFundingManager), usdtAmount);
+            eventFundingManager.depositUsdt(usdtAmount);
+        }
+
+        uint256 canWithdrawAmount = amount - toEventPredictionAmount;
+        daoRewardManager.withdraw(user, canWithdrawAmount);
+
+        emit lpClaimReward({
+            liquidityProvider: user,
+            round: round,
+            withdrawAmount: canWithdrawAmount,
+            toPredictionAmount: toEventPredictionAmount
+        });
+    }
+
     /**
      * @dev Determine staking type and lock time based on staking amount
      * @param amount Staking amount
@@ -308,30 +329,6 @@ contract StakingManager is
 
         emit outOfAchieveReturnsNodeExit({
             liquidityProvider: lpAddress, round: round, totalReward: totalReward, blockNumber: block.number
-        });
-    }
-
-    function getLiquidityProviderInfo(address lpAddress, uint256 round)
-        external
-        view
-        returns (StakingInfoOutput memory)
-    {
-        StakingInfo storage lpInfo = liquidities[lpAddress][round];
-
-        uint256 rewardType = uint256(StakingRewardType.StakingIncomeCategorySameLevel) + 1;
-        uint256[] memory rewards = new uint256[](rewardType);
-        for (uint8 i = 0; i < rewardType; i++) {
-            rewards[i] = lpInfo.rewards[i];
-        }
-
-        return StakingInfoOutput({
-            liquidityProvider: lpInfo.liquidityProvider,
-            stakingType: lpInfo.stakingType,
-            stakingAmount: lpInfo.stakingAmount,
-            rewardUAmount: lpInfo.rewardUAmount,
-            rewardAmount: lpInfo.rewardAmount,
-            claimedAmount: lpInfo.claimedAmount,
-            rewards: rewards
         });
     }
 }

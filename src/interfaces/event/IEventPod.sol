@@ -25,8 +25,6 @@ interface IEventPod {
         uint256 endTime; // 结束时间
         EventStatus status; // 事件状态
         EventResult result; // 事件结果
-        uint256 totalYesShares; // YES总份额
-        uint256 totalNoShares; // NO总份额
         uint256 totalPool; // 总资金池 (USDT)
         uint256 settlementFeeRate; // 结算费率 (basis points, 1/10000)
         uint256 createdAt; // 创建时间
@@ -34,8 +32,6 @@ interface IEventPod {
     }
 
     struct UserPosition {
-        uint256 yesShares; // YES份额
-        uint256 noShares; // NO份额
         bool settled; // 是否已结算
         uint256 claimedAmount; // 已领取金额
     }

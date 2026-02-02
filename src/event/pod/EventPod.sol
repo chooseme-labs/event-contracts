@@ -4,6 +4,8 @@ pragma solidity ^0.8.20;
 import "@openzeppelin-upgrades/contracts/proxy/utils/Initializable.sol";
 import "@openzeppelin-upgrades/contracts/access/OwnableUpgradeable.sol";
 import "@openzeppelin-upgrades/contracts/utils/PausableUpgradeable.sol";
+import "@openzeppelin-upgrades/contracts/token/ERC1155/ERC1155Upgradeable.sol";
+import "@openzeppelin-upgrades/contracts/token/ERC1155/extensions/ERC1155SupplyUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
@@ -14,7 +16,14 @@ import "../../interfaces/event/IFundingPod.sol";
 import "../../interfaces/event/IFeeVaultPod.sol";
 import "../../interfaces/event/IOrderBookPod.sol";
 
-contract EventPod is Initializable, OwnableUpgradeable, PausableUpgradeable, EventPodStorage, IEventPod {
+contract EventPod is
+    Initializable,
+    OwnableUpgradeable,
+    PausableUpgradeable,
+    ERC1155SupplyUpgradeable,
+    EventPodStorage,
+    IEventPod
+{
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.UintSet;
 
@@ -70,6 +79,7 @@ contract EventPod is Initializable, OwnableUpgradeable, PausableUpgradeable, Eve
 
         __Ownable_init(_owner);
         __Pausable_init();
+        __ERC1155_init("");
 
         manager = _manager;
         token = _token;
@@ -199,6 +209,16 @@ contract EventPod is Initializable, OwnableUpgradeable, PausableUpgradeable, Eve
         emit SettlementFeeRateUpdated(oldRate, _feeRate);
     }
 
+    // ============ Helper Functions ============
+
+    function getYesTokenId(uint256 eventId) public pure returns (uint256) {
+        return eventId * 10 + 1;
+    }
+
+    function getNoTokenId(uint256 eventId) public pure returns (uint256) {
+        return eventId * 10 + 2;
+    }
+
     // ============ User Functions ============
 
     function splitShares(uint256 eventId, uint256 amount)
@@ -211,19 +231,18 @@ contract EventPod is Initializable, OwnableUpgradeable, PausableUpgradeable, Eve
         if (amount == 0) revert InvalidAmount();
 
         Event storage evt = events[eventId];
-        UserPosition storage userPosition = userPositions[eventId][msg.sender];
 
         // Transfer USDT from FundingPod to this contract
         IFundingPod(fundingPod).transferToEvent(token, msg.sender, amount);
 
-        // Update event totals
-        evt.totalYesShares += amount;
-        evt.totalNoShares += amount;
+        // Update event total pool
         evt.totalPool += amount;
 
-        // Update user position
-        userPosition.yesShares += amount;
-        userPosition.noShares += amount;
+        // Mint YES and NO tokens to user (totalSupply is tracked by ERC1155Supply)
+        uint256 yesTokenId = getYesTokenId(eventId);
+        uint256 noTokenId = getNoTokenId(eventId);
+        _mint(msg.sender, yesTokenId, amount, "");
+        _mint(msg.sender, noTokenId, amount, "");
 
         emit SharesSplit(eventId, msg.sender, amount, amount, amount);
     }
@@ -238,17 +257,19 @@ contract EventPod is Initializable, OwnableUpgradeable, PausableUpgradeable, Eve
         if (amount == 0) revert InvalidAmount();
 
         Event storage evt = events[eventId];
-        UserPosition storage userPosition = userPositions[eventId][msg.sender];
+        uint256 yesTokenId = getYesTokenId(eventId);
+        uint256 noTokenId = getNoTokenId(eventId);
 
-        if (userPosition.yesShares < amount || userPosition.noShares < amount) revert InsufficientShares();
+        // Check if user has sufficient shares
+        if (balanceOf(msg.sender, yesTokenId) < amount || balanceOf(msg.sender, noTokenId) < amount) {
+            revert InsufficientShares();
+        }
 
-        // Update user position
-        userPosition.yesShares -= amount;
-        userPosition.noShares -= amount;
+        // Burn YES and NO tokens from user (totalSupply is tracked by ERC1155Supply)
+        _burn(msg.sender, yesTokenId, amount);
+        _burn(msg.sender, noTokenId, amount);
 
-        // Update event totals
-        evt.totalYesShares -= amount;
-        evt.totalNoShares -= amount;
+        // Update event total pool
         evt.totalPool -= amount;
 
         // Transfer USDT back to FundingPod
@@ -271,6 +292,18 @@ contract EventPod is Initializable, OwnableUpgradeable, PausableUpgradeable, Eve
         userPosition.settled = true;
         userPosition.claimedAmount = claimableAmount;
 
+        // Burn redeemed shares
+        uint256 yesTokenId = getYesTokenId(eventId);
+        uint256 noTokenId = getNoTokenId(eventId);
+        uint256 yesBalance = balanceOf(msg.sender, yesTokenId);
+        uint256 noBalance = balanceOf(msg.sender, noTokenId);
+        if (yesBalance > 0) {
+            _burn(msg.sender, yesTokenId, yesBalance);
+        }
+        if (noBalance > 0) {
+            _burn(msg.sender, noTokenId, noBalance);
+        }
+
         // Transfer funds back to FundingPod
         IERC20(token).approve(fundingPod, claimableAmount);
         IFundingPod(fundingPod).receiveFromEvent(token, msg.sender, claimableAmount);
@@ -288,51 +321,29 @@ contract EventPod is Initializable, OwnableUpgradeable, PausableUpgradeable, Eve
         eventActive(eventId)
     {
         Event storage evt = events[eventId];
-        UserPosition storage userPosition = userPositions[eventId][user];
+        uint256 tokenId = isYes ? getYesTokenId(eventId) : getNoTokenId(eventId);
 
-        if (isYes) {
-            if (sharesDelta > 0) {
-                // Buying YES shares
-                uint256 delta = uint256(sharesDelta);
-                userPosition.yesShares += delta;
+        if (sharesDelta > 0) {
+            // Buying shares - mint tokens
+            uint256 delta = uint256(sharesDelta);
+            _mint(user, tokenId, delta, "");
 
-                // Transfer funds from FundingPod to EventPod
-                IFundingPod(fundingPod).transferToEvent(token, user, delta);
-                evt.totalPool += delta;
-            } else if (sharesDelta < 0) {
-                // Selling YES shares
-                uint256 delta = uint256(-sharesDelta);
-                if (userPosition.yesShares < delta) revert InsufficientShares();
-                userPosition.yesShares -= delta;
+            // Transfer funds from FundingPod to EventPod
+            IFundingPod(fundingPod).transferToEvent(token, user, delta);
+            evt.totalPool += delta;
+        } else if (sharesDelta < 0) {
+            // Selling shares - burn tokens
+            uint256 delta = uint256(-sharesDelta);
+            if (balanceOf(user, tokenId) < delta) revert InsufficientShares();
+            _burn(user, tokenId, delta);
 
-                // Transfer funds from EventPod to FundingPod
-                IERC20(token).approve(fundingPod, delta);
-                IFundingPod(fundingPod).receiveFromEvent(token, user, delta);
-                evt.totalPool -= delta;
-            }
-        } else {
-            if (sharesDelta > 0) {
-                // Buying NO shares
-                uint256 delta = uint256(sharesDelta);
-                userPosition.noShares += delta;
-
-                // Transfer funds from FundingPod to EventPod
-                IFundingPod(fundingPod).transferToEvent(token, user, delta);
-                evt.totalPool += delta;
-            } else if (sharesDelta < 0) {
-                // Selling NO shares
-                uint256 delta = uint256(-sharesDelta);
-                if (userPosition.noShares < delta) revert InsufficientShares();
-                userPosition.noShares -= delta;
-
-                // Transfer funds from EventPod to FundingPod
-                IERC20(token).approve(fundingPod, delta);
-                IFundingPod(fundingPod).receiveFromEvent(token, user, delta);
-                evt.totalPool -= delta;
-            }
+            // Transfer funds from EventPod to FundingPod
+            IERC20(token).approve(fundingPod, delta);
+            IFundingPod(fundingPod).receiveFromEvent(token, user, delta);
+            evt.totalPool -= delta;
         }
 
-        emit SharesUpdated(eventId, user, isYes, sharesDelta, isYes ? userPosition.yesShares : userPosition.noShares);
+        emit SharesUpdated(eventId, user, isYes, sharesDelta, balanceOf(user, tokenId));
     }
 
     // ============ Oracle Callback ============
@@ -386,11 +397,14 @@ contract EventPod is Initializable, OwnableUpgradeable, PausableUpgradeable, Eve
             return 0;
         }
 
+        uint256 yesTokenId = getYesTokenId(eventId);
+        uint256 noTokenId = getNoTokenId(eventId);
+        uint256 yesBalance = balanceOf(user, yesTokenId);
+        uint256 noBalance = balanceOf(user, noTokenId);
+
         if (evt.status == EventStatus.CANCELLED) {
             // In case of cancellation, users get back their equal shares
-            uint256 yesValue = userPosition.yesShares;
-            uint256 noValue = userPosition.noShares;
-            return yesValue < noValue ? yesValue : noValue;
+            return yesBalance < noBalance ? yesBalance : noBalance;
         }
 
         if (evt.status != EventStatus.SETTLED) {
@@ -401,17 +415,17 @@ contract EventPod is Initializable, OwnableUpgradeable, PausableUpgradeable, Eve
 
         if (result == EventResult.INVALID) {
             // Return equal shares
-            uint256 yesValue = userPosition.yesShares;
-            uint256 noValue = userPosition.noShares;
-            return yesValue < noValue ? yesValue : noValue;
+            return yesBalance < noBalance ? yesBalance : noBalance;
         }
 
-        uint256 winningShares = result == EventResult.YES ? userPosition.yesShares : userPosition.noShares;
+        uint256 winningShares = result == EventResult.YES ? yesBalance : noBalance;
         if (winningShares == 0) {
             return 0;
         }
 
-        uint256 totalWinningShares = result == EventResult.YES ? evt.totalYesShares : evt.totalNoShares;
+        // Use ERC1155Supply to get total supply of winning token
+        uint256 winningTokenId = result == EventResult.YES ? yesTokenId : noTokenId;
+        uint256 totalWinningShares = totalSupply(winningTokenId);
         if (totalWinningShares == 0) {
             return 0;
         }
@@ -445,6 +459,22 @@ contract EventPod is Initializable, OwnableUpgradeable, PausableUpgradeable, Eve
 
     function getActiveEventIds() external view override returns (uint256[] memory) {
         return activeEventIds.values();
+    }
+
+    function getYesSharesSupply(uint256 eventId) external view returns (uint256) {
+        return totalSupply(getYesTokenId(eventId));
+    }
+
+    function getNoSharesSupply(uint256 eventId) external view returns (uint256) {
+        return totalSupply(getNoTokenId(eventId));
+    }
+
+    function getUserYesShares(uint256 eventId, address user) external view returns (uint256) {
+        return balanceOf(user, getYesTokenId(eventId));
+    }
+
+    function getUserNoShares(uint256 eventId, address user) external view returns (uint256) {
+        return balanceOf(user, getNoTokenId(eventId));
     }
 
     // ============ Pausable Functions ============

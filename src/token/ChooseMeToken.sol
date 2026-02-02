@@ -222,13 +222,14 @@ contract ChooseMeToken is
             }
         }
 
-        userCost[to] += curUValue;
-        uint256 fromUValue = curUValue;
-        if (fromUValue > userCost[from]) {
-            uProfit = fromUValue - userCost[from];
-            fromUValue = userCost[from];
+        if (to != mainPair && !isFromSpecial(to)) userCost[to] += curUValue;
+        if (from != mainPair && !isFromSpecial(from)) {
+            if (fromUValue > userCost[from]) {
+                uProfit = fromUValue - userCost[from];
+                fromUValue = userCost[from];
+            }
+            userCost[from] -= fromUValue;
         }
-        userCost[from] -= fromUValue;
     }
 
     /**

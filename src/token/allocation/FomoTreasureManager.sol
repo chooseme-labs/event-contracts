@@ -30,6 +30,7 @@ contract FomoTreasureManager is Initializable, OwnableUpgradeable, PausableUpgra
      * @dev Receive native tokens (BNB) and record to funding balance
      */
     receive() external payable {
+        require(!paused(), "Pausable: paused");
         FundingBalance[NativeTokenAddress] += msg.value;
         emit Deposit(NativeTokenAddress, msg.sender, msg.value);
     }

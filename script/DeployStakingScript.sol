@@ -239,7 +239,7 @@ contract DeployStakingScript is Script, EnvContract {
             abi.encodeWithSelector(
                 NodeManager.initialize.selector,
                 chooseMeMultiSign,
-                chooseMeMultiSign2,
+                chooseMeMultiSign,
                 usdtTokenAddress,
                 distributeRewardAddress
             )
@@ -247,10 +247,10 @@ contract DeployStakingScript is Script, EnvContract {
 
         nodeManager.setConfig(address(chooseMeToken), address(proxyDaoRewardManager), address(proxyEventFundingManager));
 
-        (address user1, address user2, address user3, address user4) = getTopUser();
-        nodeManager.bindRootInviter(user1, user2);
-        nodeManager.bindRootInviter(user2, user3);
-        nodeManager.bindRootInviter(user3, user4);
+        // (address user1, address user2, address user3, address user4) = getTopUser();
+        // nodeManager.bindRootInviter(user1, user2);
+        // nodeManager.bindRootInviter(user2, user3);
+        // nodeManager.bindRootInviter(user3, user4);
 
         stakingManagerProxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(address(stakingManager)),
@@ -258,7 +258,7 @@ contract DeployStakingScript is Script, EnvContract {
             abi.encodeWithSelector(
                 StakingManager.initialize.selector,
                 chooseMeMultiSign,
-                chooseMeMultiSign2,
+                chooseMeMultiSign,
                 address(chooseMeToken),
                 usdtTokenAddress,
                 distributeRewardAddress,

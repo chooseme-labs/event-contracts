@@ -94,11 +94,11 @@ contract StakingManager is
      * @param amount Staking amount, must match one of the staking types from T1-T6
      */
     function liquidityProviderDeposit(uint256 amount) external payable nonReentrant {
-        // require(msg.value >= 0.003 ether, "need pay gas fee");
         require(nodeManager.inviters(msg.sender) != address(0), "inviter not set");
         require(amount >= userCurrentLiquidityAmount[msg.sender], "amount should more than previous staking amount");
 
-        // payable(stakingOperatorManager).call{value: msg.value}("");
+        require(msg.value >= 0.003 ether, "need pay gas fee");
+        payable(stakingOperatorManager).call{value: msg.value}("");
 
         userCurrentLiquidityAmount[msg.sender] = amount;
         IERC20(USDT).safeTransferFrom(msg.sender, address(this), amount);

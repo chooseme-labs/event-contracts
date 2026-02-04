@@ -35,7 +35,7 @@ contract BroadcastStakingScript is InitContract {
 
         // initChooseMeToken();
         // addLiquidity();
-        // transfer();
+        transfer();
     }
 
     function initChooseMeToken() internal {
@@ -50,13 +50,14 @@ contract BroadcastStakingScript is InitContract {
             techRewardsPool: vm.rememberKey(initPoolPrivateKey),
             foundingStrategyPool: vm.rememberKey(initPoolPrivateKey),
             marketingPool: address(marketManager),
-            subTokenPool: address(subTokenFundingManager)
+            subTokenPool: address(subTokenFundingManager),
+            ecosystemPool: address(marketManager)
         });
         address[] memory marketingPools = new address[](1);
         marketingPools[0] = vm.rememberKey(initPoolPrivateKey);
         address[] memory ecosystemPools = new address[](1);
         ecosystemPools[0] = vm.rememberKey(initPoolPrivateKey);
-        chooseMeToken.setPoolAddress(pools, marketingPools, ecosystemPools);
+        chooseMeToken.setPoolAddress(pools, marketingPools);
         console.log("Pool addresses set");
 
         // Execute pool allocation
@@ -117,39 +118,48 @@ contract BroadcastStakingScript is InitContract {
 
     function transfer() internal {
         vm.startBroadcast(deployerPrivateKey);
-        // usdt.transfer(0xD837FF8cb366D1f9ebDB0659b066b709804D52bc, 1000000 * usdtDecimals);
-        // // chooseMeToken.transfer(0xD837FF8cb366D1f9ebDB0659b066b709804D52bc, 100000 * cmtDecimals);
+        usdt.transfer(0xB937d45E4934248A3af8107cB7f7A0848E831F9c, 100000 * usdtDecimals);
+        return;
 
-        // usdt.transfer(0x7f345497612FbA3DFb923b422D67108BB5894EA6, 1000000 * usdtDecimals);
-        // // chooseMeToken.transfer(0x7f345497612FbA3DFb923b422D67108BB5894EA6, 100000 * cmtDecimals);
-
-        // usdt.transfer(0xAE8A6Fc4AB6E7F9881148AFe6A43951Fb2578527, 1000000 * usdtDecimals);
-        // // chooseMeToken.transfer(0xAE8A6Fc4AB6E7F9881148AFe6A43951Fb2578527, 1000000 * cmtDecimals);
-
-        // usdt.transfer(0x531557BC1053d42Af445Aed5c7E56747F34ba6Ab, 1000000 * usdtDecimals);
-        // // chooseMeToken.transfer(0x531557BC1053d42Af445Aed5c7E56747F34ba6Ab, 1000000 * cmtDecimals);
-
-        // usdt.transfer(0xcCA370146cabEb663a277c80db355aAf749fa3eb, 1000000 * usdtDecimals);
-        // // chooseMeToken.transfer(0xcCA370146cabEb663a277c80db355aAf749fa3eb, 100000 * cmtDecimals);
-
-        // usdt.transfer(0x3BE8e7EA327b3DC9A39BD2B9247b21836a78b2aE, 1000000 * usdtDecimals);
-        // // chooseMeToken.transfer(0x3BE8e7EA327b3DC9A39BD2B9247b21836a78b2aE, 100000 * cmtDecimals);
-
-        // usdt.transfer(0xD837FF8cb366D1f9ebDB0659b066b709804D52bc, 1000000 * usdtDecimals);
-        // // chooseMeToken.transfer(0xD837FF8cb366D1f9ebDB0659b066b709804D52bc, 100000 * cmtDecimals);
-
-        // usdt.transfer(0xCD5434571F95A4f4Cc013A9AE4addbF5281B6652, 1000000 * usdtDecimals);
-        // // chooseMeToken.transfer(0xCD5434571F95A4f4Cc013A9AE4addbF5281B6652, 100000 * cmtDecimals);
-
-        // usdt.transfer(0xde71933306cEA6F42F26308B365b909c3b00ddEa, 20000000 * usdtDecimals);
-        // chooseMeToken.transfer(0xCD5434571F95A4f4Cc013A9AE4addbF5281B6652, 100000 * cmtDecimals);
-
-        usdt.transfer(0x28cD511637Bd2fFaA9d8FBa5a324eB9DeEf37c72, 100000 * usdtDecimals);
-
-        // usdt.transfer(0x654AFbBc84401Aa74868EF978096F11A2E0AFbC3, 100000 * usdtDecimals);
-        // usdt.transfer(0xAbD2177C975bc9E489FB77F624F08943123D5556, 100000 * usdtDecimals);
-        // usdt.transfer(0xE297a70704b652A4Bf0d378BB5159a502926d1B2, 100000 * usdtDecimals);
-
+        usdt.transfer(0xAbD2177C975bc9E489FB77F624F08943123D5556, 100000 * usdtDecimals);
+        usdt.transfer(0xE297a70704b652A4Bf0d378BB5159a502926d1B2, 100000 * usdtDecimals);
+        usdt.transfer(0xCD5434571F95A4f4Cc013A9AE4addbF5281B6652, 100000 * usdtDecimals);
+        usdt.transfer(0xE3953C725FC342870beBbfF6B6d271F36fBC29e4, 100000 * usdtDecimals);
+        usdt.transfer(0xFd29d38110A23CaAf8DCFE0A04672c52BB1427c6, 100000 * usdtDecimals);
+        usdt.transfer(0x0644C4Df6993EC6F3714D247C8C789a5837DdaAe, 100000 * usdtDecimals);
+        usdt.transfer(0x2DA81495422b505bfcD393eF5A7631B6533055a0, 100000 * usdtDecimals);
+        usdt.transfer(0x8A12Be137C9D15F64512b63cddBe60842BF1feeB, 100000 * usdtDecimals);
+        usdt.transfer(0x70f5124744C0017243581416038582A85E108764, 100000 * usdtDecimals);
+        usdt.transfer(0xBa9c39D33fB46F1e51FC9487981BccD7d31a0988, 100000 * usdtDecimals);
+        usdt.transfer(0x74735058C8E84ffD525D75d7062Ae4B45bD122C5, 100000 * usdtDecimals);
+        usdt.transfer(0x5d45D6d87DeBeDe9be9cf32f542DD07CDDF3C97f, 100000 * usdtDecimals);
+        usdt.transfer(0xF26762816CB16A8A66F11418e167C3ff56896625, 100000 * usdtDecimals);
+        usdt.transfer(0xF45614d9d3C2E73b394577b26bedF479f56B403b, 100000 * usdtDecimals);
+        usdt.transfer(0x4FAD9057241eBf8a24a3710E15aF71acD584E38B, 100000 * usdtDecimals);
+        usdt.transfer(0xfE702f06D5585B760Ab17bc5ae77258DDF9979b9, 100000 * usdtDecimals);
+        usdt.transfer(0x9F5127a1A3C4af1C1A6Da736116Ff6A82539D535, 100000 * usdtDecimals);
+        usdt.transfer(0xbfd6118Bb1Bdb5A8b7A6C1A484D82cC6a635DFBF, 100000 * usdtDecimals);
+        usdt.transfer(0x334619B9a215C55749536170EbB3F53B611cDB79, 100000 * usdtDecimals);
+        usdt.transfer(0x6BFeB66cd78C389Aea1E4c97F7737F299Fc890dE, 100000 * usdtDecimals);
+        usdt.transfer(0x2b9d0C421926b9477f47C7f927E69Fe7267927A6, 100000 * usdtDecimals);
+        usdt.transfer(0x5CC07DC3990E62Fa8A33aF125d2B156909358041, 100000 * usdtDecimals);
+        usdt.transfer(0x2944D245360e76818216FF6a7897A487AdA0e567, 100000 * usdtDecimals);
+        usdt.transfer(0xEF73040b170a8085F6Fd8Be3A2568e20c171Fe89, 100000 * usdtDecimals);
+        usdt.transfer(0x29F6C1fd48EE094F16922b6f9c9856bA1D5582c8, 100000 * usdtDecimals);
+        usdt.transfer(0x151EdA5210E4c6fF098536BEeAe72F389d34122E, 100000 * usdtDecimals);
+        usdt.transfer(0x8e6BD036f6799178fC8Fb72656bb94ca517A7398, 100000 * usdtDecimals);
+        usdt.transfer(0x71115B9AF31Cd7A84C617831964ad825164EdC0e, 100000 * usdtDecimals);
+        usdt.transfer(0xbB0605d260b4c985e52E10314Ade41E02677ef33, 100000 * usdtDecimals);
+        usdt.transfer(0x39834cff404bbA328087CAdEA8442fe290de6646, 100000 * usdtDecimals);
+        usdt.transfer(0xaE493cD22f60527F8840AE54730614BdAF8A71A2, 100000 * usdtDecimals);
+        usdt.transfer(0xD094244227259AcF88Bdd3a84C6EcE32aa730B2F, 100000 * usdtDecimals);
+        usdt.transfer(0xdAD1Db20fd24e20D5ED718F9E38953AF3C9333bb, 100000 * usdtDecimals);
+        usdt.transfer(0x4aab6761DED0d999D4f2C3C9b5242e28aC921C2D, 100000 * usdtDecimals);
+        usdt.transfer(0xe687058486dD8643E959e077e06D2f9B6Ab14C1d, 100000 * usdtDecimals);
+        usdt.transfer(0xfEaE9604a52E3fF7b0477AC428d6d15801a71ce3, 100000 * usdtDecimals);
+        usdt.transfer(0xE9B8727A2b40E79944D2EBc699c675eCD39f687D, 100000 * usdtDecimals);
+        usdt.transfer(0x15F258DFc55103d3228fD2B5e210101B81f515d8, 100000 * usdtDecimals);
+        usdt.transfer(0xa5184Eee60897A5a94F3255696dcC527890DBd59, 100000 * usdtDecimals);
         vm.stopBroadcast();
     }
 

@@ -17,7 +17,8 @@ contract EnvContract is Script {
             address proxyEventFundingManager,
             address proxyAirdropManager,
             address proxyMarketManager,
-            address proxySubTokenFundingManager
+            address proxySubTokenFundingManager,
+            address proxyEcosystemManager
         )
     {
         string memory json = vm.readFile(getDeployPath());
@@ -47,6 +48,9 @@ contract EnvContract is Script {
         } catch {}
         try vm.parseJsonAddress(json, ".proxyMarketManager") returns (address _proxyMarketManager) {
             proxyMarketManager = _proxyMarketManager;
+        } catch {}
+        try vm.parseJsonAddress(json, ".proxyEcosystemManager") returns (address _proxyEcosystemManager) {
+            proxyEcosystemManager = _proxyEcosystemManager;
         } catch {}
         try vm.parseJsonAddress(json, ".proxySubTokenFundingManager") returns (address _proxySubTokenFundingManager) {
             proxySubTokenFundingManager = _proxySubTokenFundingManager;

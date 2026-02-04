@@ -72,6 +72,7 @@ contract DeployStakingScript is Script, EnvContract {
 
     MarketManager public marketManagerImplementation;
     MarketManager public marketManager;
+    MarketManager[10] public marketManagers;
 
     AirdropManager public airdropManagerImplementation;
     AirdropManager public airdropManager;
@@ -195,11 +196,23 @@ contract DeployStakingScript is Script, EnvContract {
         subTokenFundingManagerImplementation = new SubTokenFundingManager();
         subTokenFundingManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(address(proxySubTokenFundingManager)));
 
-        TransparentUpgradeableProxy proxyMarketManager =
-            new TransparentUpgradeableProxy(address(emptyContract), chooseMeMultiSign, "");
-        marketManager = MarketManager(payable(address(proxyMarketManager)));
+        // Deploy 10 MarketManager contracts
         marketManagerImplementation = new MarketManager();
-        marketManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(address(proxyMarketManager)));
+        for (uint256 i = 0; i < 10; i++) {
+            TransparentUpgradeableProxy proxyMarketManager =
+                new TransparentUpgradeableProxy(address(emptyContract), chooseMeMultiSign, "");
+            marketManagers[i] = MarketManager(payable(address(proxyMarketManager)));
+            ProxyAdmin tempProxyAdmin = ProxyAdmin(getProxyAdminAddress(address(proxyMarketManager)));
+            tempProxyAdmin.upgradeAndCall(
+                ITransparentUpgradeableProxy(address(marketManagers[i])),
+                address(marketManagerImplementation),
+                abi.encodeWithSelector(
+                    MarketManager.initialize.selector, chooseMeMultiSign, chooseMeMultiSign, address(chooseMeToken)
+                )
+            );
+        }
+        marketManager = marketManagers[0];
+        marketManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(address(marketManager)));
 
         TransparentUpgradeableProxy proxyAirdropManager =
             new TransparentUpgradeableProxy(address(emptyContract), chooseMeMultiSign, "");
@@ -306,14 +319,6 @@ contract DeployStakingScript is Script, EnvContract {
             )
         );
 
-        marketManagerProxyAdmin.upgradeAndCall(
-            ITransparentUpgradeableProxy(address(marketManager)),
-            address(marketManagerImplementation),
-            abi.encodeWithSelector(
-                MarketManager.initialize.selector, chooseMeMultiSign, chooseMeMultiSign, address(chooseMeToken)
-            )
-        );
-
         airdropManagerProxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(address(airdropManager)),
             address(airdropManagerImplementation),
@@ -356,7 +361,9 @@ contract DeployStakingScript is Script, EnvContract {
         console.log("deploy proxyFomoTreasureManager:", address(proxyFomoTreasureManager));
         console.log("deploy proxyEventFundingManager:", address(proxyEventFundingManager));
         console.log("deploy proxySubTokenFundingManager:", address(proxySubTokenFundingManager));
-        console.log("deploy proxyMarketManager:", address(proxyMarketManager));
+        for (uint256 i = 0; i < 10; i++) {
+            console.log("deploy proxyMarketManager", i, ":", address(marketManagers[i]));
+        }
         console.log("deploy proxyAirdropManager:", address(proxyAirdropManager));
         console.log("deploy proxyEcosystemManager:", address(proxyEcosystemManager));
         console.log("deploy proxyCapitalManager:", address(proxyCapitalManager));
@@ -370,7 +377,11 @@ contract DeployStakingScript is Script, EnvContract {
         vm.serializeAddress(obj, "proxyDaoRewardManager", address(proxyDaoRewardManager));
         vm.serializeAddress(obj, "proxyFomoTreasureManager", address(proxyFomoTreasureManager));
         vm.serializeAddress(obj, "proxyEventFundingManager", address(proxyEventFundingManager));
-        vm.serializeAddress(obj, "proxyMarketManager", address(proxyMarketManager));
+        for (uint256 i = 0; i < 10; i++) {
+            vm.serializeAddress(
+                obj, string(abi.encodePacked("proxyMarketManager", Strings.toString(i))), address(marketManagers[i])
+            );
+        }
         vm.serializeAddress(obj, "proxyAirdropManager", address(proxyAirdropManager));
         vm.serializeAddress(obj, "proxyEcosystemManager", address(proxyEcosystemManager));
         vm.serializeAddress(obj, "proxyCapitalManager", address(proxyCapitalManager));
@@ -421,15 +432,18 @@ contract DeployStakingScript is Script, EnvContract {
             capitalPool: address(capitalManager),
             daoRewardPool: address(daoRewardManager),
             airdropPool: address(airdropManager),
-            marketingPool: address(marketManager),
             marketingFeePool: address(marketManager), // TODO
             ecosystemPool: address(ecosystemManager),
             subTokenPool: address(subTokenFundingManager)
         });
 
-        address[] memory marketingPools = new address[](1);
-        marketingPools[0] = vm.rememberKey(deployerPrivateKey);
+        address[] memory marketingPools = new address[](10);
+        for (uint256 i = 0; i < 10; i++) {
+            marketingPools[i] = address(marketManagers[i]);
+        }
 
+        // TODO
+        return;
         chooseMeToken.setPoolAddress(pools, marketingPools);
         console.log("Pool addresses set");
 
@@ -451,7 +465,7 @@ contract DeployStakingScript is Script, EnvContract {
             address proxyFomoTreasureManager,
             address proxyEventFundingManager,
             address proxyAirdropManager,
-            address proxyMarketManager,
+            address[10] memory proxyMarketManagers,
             address proxySubTokenFundingManager,
             address proxyEcosystemManager,
             address proxyCapitalManager,
@@ -466,7 +480,10 @@ contract DeployStakingScript is Script, EnvContract {
         nodeManager = NodeManager(payable(proxyNodeManager));
         stakingManager = StakingManager(payable(proxyStakingManager));
         subTokenFundingManager = SubTokenFundingManager(payable(proxySubTokenFundingManager));
-        marketManager = MarketManager(payable(proxyMarketManager));
+        for (uint256 i = 0; i < 10; i++) {
+            marketManagers[i] = MarketManager(payable(proxyMarketManagers[i]));
+        }
+        marketManager = marketManagers[0];
         airdropManager = AirdropManager(payable(proxyAirdropManager));
         ecosystemManager = EcosystemManager(payable(proxyEcosystemManager));
         capitalManager = CapitalManager(payable(proxyCapitalManager));
@@ -479,7 +496,7 @@ contract DeployStakingScript is Script, EnvContract {
         fomoTreasureManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(proxyFomoTreasureManager));
         eventFundingManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(proxyEventFundingManager));
         subTokenFundingManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(proxySubTokenFundingManager));
-        marketManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(proxyMarketManager));
+        marketManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(address(marketManager)));
         airdropManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(proxyAirdropManager));
         ecosystemManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(proxyEcosystemManager));
         capitalManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(proxyCapitalManager));

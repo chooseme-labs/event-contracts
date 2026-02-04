@@ -44,6 +44,7 @@ contract InitContract is EnvContract {
     EventFundingManager public eventFundingManager;
     SubTokenFundingManager public subTokenFundingManager;
     MarketManager public marketManager;
+    MarketManager[10] public marketManagers;
     AirdropManager public airdropManager;
     EcosystemManager public ecosystemManager;
     CapitalManager public capitalManager;
@@ -63,7 +64,7 @@ contract InitContract is EnvContract {
             address proxyFomoTreasureManager,
             address proxyEventFundingManager,
             address proxyAirdropManager,
-            address proxyMarketManager,
+            address[10] memory proxyMarketManagers,
             address proxySubTokenFundingManager,
             address proxyEcosystemManager,
             address proxyCapitalManager,
@@ -78,7 +79,10 @@ contract InitContract is EnvContract {
         nodeManager = NodeManager(payable(proxyNodeManager));
         stakingManager = StakingManager(payable(proxyStakingManager));
         subTokenFundingManager = SubTokenFundingManager(payable(proxySubTokenFundingManager));
-        marketManager = MarketManager(payable(proxyMarketManager));
+        for (uint256 i = 0; i < 10; i++) {
+            marketManagers[i] = MarketManager(payable(proxyMarketManagers[i]));
+        }
+        marketManager = marketManagers[0];
         airdropManager = AirdropManager(payable(proxyAirdropManager));
         ecosystemManager = EcosystemManager(payable(proxyEcosystemManager));
         capitalManager = CapitalManager(payable(proxyCapitalManager));

@@ -183,7 +183,6 @@ contract IntegratedTestChooseMeTokenTrading is Script {
             techFeePool: techRewardsPool,
             techPool: techRewardsPool,
             capitalPool: foundingStrategyPool,
-            marketingPool: marketingDevelopmentPool,
             marketingFeePool: marketingDevelopmentPool,
             subTokenPool: subTokenPool,
             ecosystemPool: ecosystemPool

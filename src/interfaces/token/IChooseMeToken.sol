@@ -24,7 +24,6 @@ interface IChooseMeToken {
         address techFeePool; // Technical Fee
         address techPool; // Technical
         address capitalPool; // Capital strategy
-        address marketingPool; // Marketing development
         address marketingFeePool; // Marketing development
         address subTokenPool; // Sub token liquidity pool
         address ecosystemPool; // ecosystemPool

@@ -214,7 +214,6 @@ contract IntegratedTestStakingScript is Script {
             techFeePool: owner,
             techPool: owner,
             capitalPool: owner,
-            marketingPool: owner,
             marketingFeePool: owner,
             subTokenPool: owner,
             ecosystemPool: owner

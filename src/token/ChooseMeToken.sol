@@ -245,8 +245,8 @@ contract ChooseMeToken is
      */
     function isFromSpecial(address from) internal view returns (bool) {
         return from == cmPool.nodePool || from == cmPool.daoRewardPool || from == cmPool.techPool
-            || from == cmPool.capitalPool || from == cmPool.marketingPool || from == cmPool.subTokenPool
-            || from == cmPool.ecosystemPool || EnumerableSet.contains(marketingPools, from);
+            || from == cmPool.capitalPool || from == cmPool.subTokenPool || from == cmPool.ecosystemPool
+            || EnumerableSet.contains(marketingPools, from);
     }
 
     /**
@@ -325,15 +325,12 @@ contract ChooseMeToken is
      * @dev Set all pool addresses
      * @param _pool Struct containing all pool addresses
      */
-    function setPoolAddress(ChooseMePool memory _pool, address[] memory _marketingDevelopmentPools)
-        external
-        onlyOperator
-    {
+    function setPoolAddress(ChooseMePool memory _pool, address[] memory _marketingPools) external onlyOperator {
         _beforeAllocation();
         _beforePoolAddress(_pool);
         cmPool = _pool;
-        for (uint256 i = 0; i < _marketingDevelopmentPools.length; i++) {
-            EnumerableSet.add(marketingPools, _marketingDevelopmentPools[i]);
+        for (uint256 i = 0; i < _marketingPools.length; i++) {
+            EnumerableSet.add(marketingPools, _marketingPools[i]);
         }
         emit SetPoolAddress(_pool);
     }
@@ -406,7 +403,6 @@ contract ChooseMeToken is
         require(_pool.airdropPool != address(0), "Missing allocate airdropPool address");
         require(_pool.techPool != address(0), "Missing allocate techPool address");
         require(_pool.capitalPool != address(0), "Missing allocate capitalPool address");
-        require(_pool.marketingPool != address(0), "Missing allocate marketingPool address");
     }
 
     function quote(uint256 amount) public view returns (uint256) {

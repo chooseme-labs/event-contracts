@@ -16,7 +16,7 @@ contract EnvContract is Script {
             address proxyFomoTreasureManager,
             address proxyEventFundingManager,
             address proxyAirdropManager,
-            address proxyMarketManager,
+            address[10] memory proxyMarketManagers,
             address proxySubTokenFundingManager,
             address proxyEcosystemManager,
             address proxyCapitalManager,
@@ -48,9 +48,13 @@ contract EnvContract is Script {
         try vm.parseJsonAddress(json, ".proxyAirdropManager") returns (address _proxyAirdropManager) {
             proxyAirdropManager = _proxyAirdropManager;
         } catch {}
-        try vm.parseJsonAddress(json, ".proxyMarketManager") returns (address _proxyMarketManager) {
-            proxyMarketManager = _proxyMarketManager;
-        } catch {}
+        for (uint256 i = 0; i < 10; i++) {
+            try vm.parseJsonAddress(json, string(abi.encodePacked(".proxyMarketManager", vm.toString(i)))) returns (
+                address _proxyMarketManager
+            ) {
+                proxyMarketManagers[i] = _proxyMarketManager;
+            } catch {}
+        }
         try vm.parseJsonAddress(json, ".proxyEcosystemManager") returns (address _proxyEcosystemManager) {
             proxyEcosystemManager = _proxyEcosystemManager;
         } catch {}

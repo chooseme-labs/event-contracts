@@ -50,7 +50,6 @@ contract BroadcastStakingScript is InitContract {
             techPool: address(techManager),
             techFeePool: address(techManager), // TODO
             capitalPool: address(capitalManager),
-            marketingPool: address(marketManager),
             marketingFeePool: address(marketManager), // TODO
             subTokenPool: address(subTokenFundingManager),
             ecosystemPool: address(marketManager)

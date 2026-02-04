@@ -18,6 +18,9 @@ import {DaoRewardManager} from "../src/token/allocation/DaoRewardManager.sol";
 import {FomoTreasureManager} from "../src/token/allocation/FomoTreasureManager.sol";
 import {AirdropManager} from "../src/token/allocation/AirdropManager.sol";
 import {MarketManager} from "../src/token/allocation/MarketManager.sol";
+import {CapitalManager} from "../src/token/allocation/CapitalManager.sol";
+import {EcosystemManager} from "../src/token/allocation/EcosystemManager.sol";
+import {TechManager} from "../src/token/allocation/TechManager.sol";
 import {NodeManager} from "../src/staking/NodeManager.sol";
 import {StakingManager} from "../src/staking/StakingManager.sol";
 import {EventFundingManager} from "../src/staking/EventFundingManager.sol";
@@ -42,6 +45,9 @@ contract InitContract is EnvContract {
     SubTokenFundingManager public subTokenFundingManager;
     MarketManager public marketManager;
     AirdropManager public airdropManager;
+    EcosystemManager public ecosystemManager;
+    CapitalManager public capitalManager;
+    TechManager public techManager;
 
     IPancakeV2Router public pancakeRouter;
     IPancakeV2Factory public pancakeFactory;
@@ -58,7 +64,10 @@ contract InitContract is EnvContract {
             address proxyEventFundingManager,
             address proxyAirdropManager,
             address proxyMarketManager,
-            address proxySubTokenFundingManager
+            address proxySubTokenFundingManager,
+            address proxyEcosystemManager,
+            address proxyCapitalManager,
+            address proxyTechManager
         ) = getAddresses();
 
         usdt = TestUSDT(payable(usdtTokenAddress));
@@ -71,6 +80,9 @@ contract InitContract is EnvContract {
         subTokenFundingManager = SubTokenFundingManager(payable(proxySubTokenFundingManager));
         marketManager = MarketManager(payable(proxyMarketManager));
         airdropManager = AirdropManager(payable(proxyAirdropManager));
+        ecosystemManager = EcosystemManager(payable(proxyEcosystemManager));
+        capitalManager = CapitalManager(payable(proxyCapitalManager));
+        techManager = TechManager(payable(proxyTechManager));
 
         pancakeRouter = IPancakeV2Router(0x10ED43C718714eb63d5aA57B78B54704E256024E); // PancakeSwap Router V2
         pancakeFactory = IPancakeV2Factory(pancakeRouter.factory());

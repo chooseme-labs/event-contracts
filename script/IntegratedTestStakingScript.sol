@@ -211,16 +211,17 @@ contract IntegratedTestStakingScript is Script {
             nodePool: owner, // For testing
             daoRewardPool: address(daoRewardManager),
             airdropPool: address(airdropManager),
-            techRewardsPool: owner,
-            foundingStrategyPool: owner,
+            techFeePool: owner,
+            techPool: owner,
+            capitalPool: owner,
             marketingPool: owner,
-            subTokenPool: owner
+            marketingFeePool: owner,
+            subTokenPool: owner,
+            ecosystemPool: owner
         });
         address[] memory marketingPools = new address[](1);
         marketingPools[0] = owner;
-        address[] memory ecosystemPools = new address[](1);
-        ecosystemPools[0] = owner;
-        chooseMeToken.setPoolAddress(pool, marketingPools, ecosystemPools);
+        chooseMeToken.setPoolAddress(pool, marketingPools);
         chooseMeToken.poolAllocate();
         console.log("Token pools allocated");
 
@@ -334,7 +335,7 @@ contract IntegratedTestStakingScript is Script {
         if (stakingManagerUsdtBalance >= liquidityAmount) {
             uint256 deployerPrivateKey = vm.envUint("DEV_PRIVATE_KEY");
             vm.startBroadcast(deployerPrivateKey);
-            stakingManager.addLiquidity(liquidityAmount, 1e18);
+            stakingManager.addLiquidity(liquidityAmount, 1e18, 0);
             console.log("Successfully added liquidity via StakingManager");
             console.log("Liquidity amount:", liquidityAmount / 10 ** 18, "USDT");
             vm.stopBroadcast();

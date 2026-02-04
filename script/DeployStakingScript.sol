@@ -15,6 +15,9 @@ import {DaoRewardManager} from "../src/token/allocation/DaoRewardManager.sol";
 import {FomoTreasureManager} from "../src/token/allocation/FomoTreasureManager.sol";
 import {AirdropManager} from "../src/token/allocation/AirdropManager.sol";
 import {MarketManager} from "../src/token/allocation/MarketManager.sol";
+import {CapitalManager} from "../src/token/allocation/CapitalManager.sol";
+import {EcosystemManager} from "../src/token/allocation/EcosystemManager.sol";
+import {TechManager} from "../src/token/allocation/TechManager.sol";
 import {NodeManager} from "../src/staking/NodeManager.sol";
 import {StakingManager} from "../src/staking/StakingManager.sol";
 import {EventFundingManager} from "../src/staking/EventFundingManager.sol";
@@ -42,6 +45,9 @@ contract DeployStakingScript is Script, EnvContract {
     ProxyAdmin public subTokenFundingManagerProxyAdmin;
     ProxyAdmin public marketManagerProxyAdmin;
     ProxyAdmin public airdropManagerProxyAdmin;
+    ProxyAdmin public ecosystemManagerProxyAdmin;
+    ProxyAdmin public capitalManagerProxyAdmin;
+    ProxyAdmin public techManagerProxyAdmin;
 
     ChooseMeToken public chooseMeTokenImplementation;
     ChooseMeToken public chooseMeToken;
@@ -70,8 +76,14 @@ contract DeployStakingScript is Script, EnvContract {
     AirdropManager public airdropManagerImplementation;
     AirdropManager public airdropManager;
 
-    AirdropManager public ecosystemManagerImplementation;
-    AirdropManager public ecosystemManager;
+    EcosystemManager public ecosystemManagerImplementation;
+    EcosystemManager public ecosystemManager;
+
+    CapitalManager public capitalManagerImplementation;
+    CapitalManager public capitalManager;
+
+    TechManager public techManagerImplementation;
+    TechManager public techManager;
 
     TestUSDT public usdt;
 
@@ -197,9 +209,21 @@ contract DeployStakingScript is Script, EnvContract {
 
         TransparentUpgradeableProxy proxyEcosystemManager =
             new TransparentUpgradeableProxy(address(emptyContract), chooseMeMultiSign, "");
-        ecosystemManager = AirdropManager(payable(address(proxyEcosystemManager)));
-        ecosystemManagerImplementation = new AirdropManager();
+        ecosystemManager = EcosystemManager(payable(address(proxyEcosystemManager)));
+        ecosystemManagerImplementation = new EcosystemManager();
         ecosystemManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(address(proxyEcosystemManager)));
+
+        TransparentUpgradeableProxy proxyCapitalManager =
+            new TransparentUpgradeableProxy(address(emptyContract), chooseMeMultiSign, "");
+        capitalManager = CapitalManager(payable(address(proxyCapitalManager)));
+        capitalManagerImplementation = new CapitalManager();
+        capitalManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(address(proxyCapitalManager)));
+
+        TransparentUpgradeableProxy proxyTechManager =
+            new TransparentUpgradeableProxy(address(emptyContract), chooseMeMultiSign, "");
+        techManager = TechManager(payable(address(proxyTechManager)));
+        techManagerImplementation = new TechManager();
+        techManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(address(proxyTechManager)));
 
         chooseMeTokenProxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(address(chooseMeToken)),
@@ -302,7 +326,23 @@ contract DeployStakingScript is Script, EnvContract {
             ITransparentUpgradeableProxy(address(ecosystemManager)),
             address(ecosystemManagerImplementation),
             abi.encodeWithSelector(
-                AirdropManager.initialize.selector, chooseMeMultiSign, chooseMeMultiSign, address(chooseMeToken)
+                EcosystemManager.initialize.selector, chooseMeMultiSign, chooseMeMultiSign, address(chooseMeToken)
+            )
+        );
+
+        capitalManagerProxyAdmin.upgradeAndCall(
+            ITransparentUpgradeableProxy(address(capitalManager)),
+            address(capitalManagerImplementation),
+            abi.encodeWithSelector(
+                CapitalManager.initialize.selector, chooseMeMultiSign, chooseMeMultiSign, address(chooseMeToken)
+            )
+        );
+
+        techManagerProxyAdmin.upgradeAndCall(
+            ITransparentUpgradeableProxy(address(techManager)),
+            address(techManagerImplementation),
+            abi.encodeWithSelector(
+                TechManager.initialize.selector, chooseMeMultiSign, chooseMeMultiSign, address(chooseMeToken)
             )
         );
 
@@ -319,6 +359,8 @@ contract DeployStakingScript is Script, EnvContract {
         console.log("deploy proxyMarketManager:", address(proxyMarketManager));
         console.log("deploy proxyAirdropManager:", address(proxyAirdropManager));
         console.log("deploy proxyEcosystemManager:", address(proxyEcosystemManager));
+        console.log("deploy proxyCapitalManager:", address(proxyCapitalManager));
+        console.log("deploy proxyTechManager:", address(proxyTechManager));
 
         string memory obj = "{}";
         vm.serializeAddress(obj, "usdtTokenAddress", usdtTokenAddress);
@@ -331,6 +373,8 @@ contract DeployStakingScript is Script, EnvContract {
         vm.serializeAddress(obj, "proxyMarketManager", address(proxyMarketManager));
         vm.serializeAddress(obj, "proxyAirdropManager", address(proxyAirdropManager));
         vm.serializeAddress(obj, "proxyEcosystemManager", address(proxyEcosystemManager));
+        vm.serializeAddress(obj, "proxyCapitalManager", address(proxyCapitalManager));
+        vm.serializeAddress(obj, "proxyTechManager", address(proxyTechManager));
 
         string memory finalJSON =
             vm.serializeAddress(obj, "proxySubTokenFundingManager", address(proxySubTokenFundingManager));
@@ -372,11 +416,13 @@ contract DeployStakingScript is Script, EnvContract {
         vm.startBroadcast(deployerPrivateKey);
         IChooseMeToken.ChooseMePool memory pools = IChooseMeToken.ChooseMePool({
             nodePool: address(nodeManager),
-            techRewardsPool: vm.rememberKey(deployerPrivateKey), // TODO
-            foundingStrategyPool: vm.rememberKey(deployerPrivateKey), // TODO
+            techPool: address(techManager),
+            techFeePool: address(techManager), // TODO
+            capitalPool: address(capitalManager),
             daoRewardPool: address(daoRewardManager),
             airdropPool: address(airdropManager),
             marketingPool: address(marketManager),
+            marketingFeePool: address(marketManager), // TODO
             ecosystemPool: address(ecosystemManager),
             subTokenPool: address(subTokenFundingManager)
         });
@@ -407,7 +453,9 @@ contract DeployStakingScript is Script, EnvContract {
             address proxyAirdropManager,
             address proxyMarketManager,
             address proxySubTokenFundingManager,
-            address proxyEcosystemManager
+            address proxyEcosystemManager,
+            address proxyCapitalManager,
+            address proxyTechManager
         ) = getAddresses();
 
         usdt = TestUSDT(payable(usdtTokenAddress));
@@ -420,7 +468,9 @@ contract DeployStakingScript is Script, EnvContract {
         subTokenFundingManager = SubTokenFundingManager(payable(proxySubTokenFundingManager));
         marketManager = MarketManager(payable(proxyMarketManager));
         airdropManager = AirdropManager(payable(proxyAirdropManager));
-        ecosystemManager = AirdropManager(payable(proxyEcosystemManager));
+        ecosystemManager = EcosystemManager(payable(proxyEcosystemManager));
+        capitalManager = CapitalManager(payable(proxyCapitalManager));
+        techManager = TechManager(payable(proxyTechManager));
 
         chooseMeTokenProxyAdmin = ProxyAdmin(getProxyAdminAddress(proxyChooseMeToken));
         nodeManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(proxyNodeManager));
@@ -432,6 +482,8 @@ contract DeployStakingScript is Script, EnvContract {
         marketManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(proxyMarketManager));
         airdropManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(proxyAirdropManager));
         ecosystemManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(proxyEcosystemManager));
+        capitalManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(proxyCapitalManager));
+        techManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(proxyTechManager));
 
         console.log("Contracts initialized");
     }

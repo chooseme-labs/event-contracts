@@ -180,16 +180,17 @@ contract IntegratedTestChooseMeTokenTrading is Script {
             nodePool: nodePool,
             daoRewardPool: daoRewardPool,
             airdropPool: airdropPool,
-            techRewardsPool: techRewardsPool,
-            foundingStrategyPool: foundingStrategyPool,
+            techFeePool: techRewardsPool,
+            techPool: techRewardsPool,
+            capitalPool: foundingStrategyPool,
             marketingPool: marketingDevelopmentPool,
-            subTokenPool: subTokenPool
+            marketingFeePool: marketingDevelopmentPool,
+            subTokenPool: subTokenPool,
+            ecosystemPool: ecosystemPool
         });
         address[] memory marketingPools = new address[](1);
         marketingPools[0] = marketingDevelopmentPool;
-        address[] memory ecosystemPools = new address[](1);
-        ecosystemPools[0] = ecosystemPool;
-        chooseMeToken.setPoolAddress(pools, marketingPools, ecosystemPools);
+        chooseMeToken.setPoolAddress(pools, marketingPools);
         console.log("Pool addresses set");
 
         // Execute pool allocation

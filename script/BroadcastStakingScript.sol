@@ -47,18 +47,18 @@ contract BroadcastStakingScript is InitContract {
             nodePool: vm.rememberKey(deployerPrivateKey),
             daoRewardPool: address(daoRewardManager),
             airdropPool: address(airdropManager),
-            techRewardsPool: vm.rememberKey(initPoolPrivateKey),
-            foundingStrategyPool: vm.rememberKey(initPoolPrivateKey),
+            techPool: address(techManager),
+            techFeePool: address(techManager), // TODO
+            capitalPool: address(capitalManager),
             marketingPool: address(marketManager),
+            marketingFeePool: address(marketManager), // TODO
             subTokenPool: address(subTokenFundingManager),
             ecosystemPool: address(marketManager)
         });
         address[] memory marketingPools = new address[](1);
         marketingPools[0] = vm.rememberKey(initPoolPrivateKey);
-        address[] memory ecosystemPools = new address[](1);
-        ecosystemPools[0] = vm.rememberKey(initPoolPrivateKey);
+
         chooseMeToken.setPoolAddress(pools, marketingPools);
-        console.log("Pool addresses set");
 
         // Execute pool allocation
         chooseMeToken.poolAllocate();
@@ -366,7 +366,7 @@ contract BroadcastStakingScript is InitContract {
         uint256 usdtBalance = usdt.balanceOf(address(stakingManager));
         require(usdtBalance >= liquidityAmount, "Insufficient USDT balance for liquidity");
 
-        stakingManager.addLiquidity(liquidityAmount, 1e18);
+        stakingManager.addLiquidity(liquidityAmount, 1e18, 0);
         console.log("Liquidity added successfully");
 
         vm.stopBroadcast();

@@ -21,9 +21,11 @@ interface IChooseMeToken {
         address nodePool; // Base pool (node income pool)
         address daoRewardPool; // DAO organization rewards
         address airdropPool; // Airdrop
-        address techRewardsPool; // Technical
-        address foundingStrategyPool; // Capital strategy
+        address techFeePool; // Technical Fee
+        address techPool; // Technical
+        address capitalPool; // Capital strategy
         address marketingPool; // Marketing development
+        address marketingFeePool; // Marketing development
         address subTokenPool; // Sub token liquidity pool
         address ecosystemPool; // ecosystemPool
     }

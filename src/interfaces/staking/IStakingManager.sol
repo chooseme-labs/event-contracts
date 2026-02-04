@@ -110,6 +110,7 @@ interface IStakingManager {
     event LiquidityAdded(uint256 liquidity, uint256 amount0, uint256 amount1);
 
     event TokensBurned(uint256 usdtAmount, uint256 tokensBurned);
+    event TokensToSubToken(uint256 amount);
 
     error InvalidAmountError(uint256 amount);
     error InvalidRewardTypeError(uint8 incomeType);
@@ -131,7 +132,7 @@ interface IStakingManager {
 
     function liquidityProviderClaimReward(uint256 amount) external;
 
-    function addLiquidity(uint256 amount, uint256 price) external;
+    function addLiquidity(uint256 amount, uint256 price, uint256 subTokenAmount) external;
 
     function swapBurn(uint256 amount, uint256 subTokenUAmount) external;
 }

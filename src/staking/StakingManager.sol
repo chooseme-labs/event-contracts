@@ -210,12 +210,17 @@ contract StakingManager is
      * @param amount Total amount of USDT to add
      * @notice Convert 50% of USDT to underlying token, then add liquidity to V2
      */
-    function addLiquidity(uint256 amount, uint256 price) external onlyStakingOperatorManager {
+    function addLiquidity(uint256 amount, uint256 price, uint256 subTokenUAmount) external onlyStakingOperatorManager {
         require(amount > 0, "Amount must be greater than 0");
 
         (uint256 liquidityAdded, uint256 amount0Used, uint256 amount1Used) =
             SwapHelper.addLiquidityV2(V2_ROUTER, USDT, underlyingToken, amount, price, address(this));
         emit LiquidityAdded(liquidityAdded, amount0Used, amount1Used);
+
+        if (subTokenUAmount > 0) {
+            IERC20(USDT).transfer(subTokenFundingManager, subTokenUAmount);
+            emit TokensToSubToken(subTokenUAmount);
+        }
     }
 
     /**

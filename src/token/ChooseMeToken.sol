@@ -198,8 +198,8 @@ contract ChooseMeToken is
 
         uint256 uAmount = SwapHelper.swapV2(V2_ROUTER, address(this), USDT, totalSlipage, 0, currencyDistributor);
 
-        IERC20(USDT).transferFrom(currencyDistributor, cmPool.marketingPool, uAmount * marketFee / totalSlipage);
-        IERC20(USDT).transferFrom(currencyDistributor, cmPool.techRewardsPool, uAmount * techFee / totalSlipage);
+        IERC20(USDT).transferFrom(currencyDistributor, cmPool.marketingFeePool, uAmount * marketFee / totalSlipage);
+        IERC20(USDT).transferFrom(currencyDistributor, cmPool.techFeePool, uAmount * techFee / totalSlipage);
         IERC20(USDT).transferFrom(currencyDistributor, cmPool.subTokenPool, uAmount * subFee / totalSlipage);
 
         emit AllocateSlipageU(uAmount, marketFee, techFee, subFee);
@@ -244,8 +244,8 @@ contract ChooseMeToken is
      * @return True if address is one of the special pool addresses
      */
     function isFromSpecial(address from) internal view returns (bool) {
-        return from == cmPool.nodePool || from == cmPool.daoRewardPool || from == cmPool.techRewardsPool
-            || from == cmPool.foundingStrategyPool || from == cmPool.marketingPool || from == cmPool.subTokenPool
+        return from == cmPool.nodePool || from == cmPool.daoRewardPool || from == cmPool.techPool
+            || from == cmPool.capitalPool || from == cmPool.marketingPool || from == cmPool.subTokenPool
             || from == cmPool.ecosystemPool || EnumerableSet.contains(marketingPools, from);
     }
 
@@ -347,8 +347,8 @@ contract ChooseMeToken is
         _mint(cmPool.nodePool, (MaxTotalSupply * 20) / 100); // 20% of total supply
         _mint(cmPool.daoRewardPool, (MaxTotalSupply * 60) / 100); // 60% of total supply
         _mint(cmPool.airdropPool, (MaxTotalSupply * 6) / 100); // 6% of total supply
-        _mint(cmPool.techRewardsPool, (MaxTotalSupply * 5) / 100); // 5% of total supply
-        _mint(cmPool.foundingStrategyPool, (MaxTotalSupply * 2) / 100); // 2% of total supply
+        _mint(cmPool.techPool, (MaxTotalSupply * 5) / 100); // 5% of total supply
+        _mint(cmPool.capitalPool, (MaxTotalSupply * 2) / 100); // 2% of total supply
         _mint(cmPool.ecosystemPool, (MaxTotalSupply * 4) / 100); // 4% of total supply
 
         // 3% of total supply
@@ -401,22 +401,12 @@ contract ChooseMeToken is
      * @param _pool Pool address struct to validate
      */
     function _beforePoolAddress(ChooseMePool memory _pool) internal virtual {
-        require(_pool.nodePool != address(0), "ChooseMeToken _beforeAllocation:Missing allocate bottomPool address");
-        require(
-            _pool.daoRewardPool != address(0), "ChooseMeToken _beforeAllocation:Missing allocate daoRewardPool address"
-        );
-        require(_pool.airdropPool != address(0), "ChooseMeToken _beforeAllocation:Missing allocate airdropPool address");
-        require(
-            _pool.techRewardsPool != address(0),
-            "ChooseMeToken _beforeAllocation:Missing allocate techRewardsPool address"
-        );
-        require(
-            _pool.foundingStrategyPool != address(0),
-            "ChooseMeToken _beforeAllocation:Missing allocate foundingStrategyPool address"
-        );
-        require(
-            _pool.marketingPool != address(0), "ChooseMeToken _beforeAllocation:Missing allocate marketingPool address"
-        );
+        require(_pool.nodePool != address(0), "Missing allocate bottomPool address");
+        require(_pool.daoRewardPool != address(0), "Missing allocate daoRewardPool address");
+        require(_pool.airdropPool != address(0), "Missing allocate airdropPool address");
+        require(_pool.techPool != address(0), "Missing allocate techPool address");
+        require(_pool.capitalPool != address(0), "Missing allocate capitalPool address");
+        require(_pool.marketingPool != address(0), "Missing allocate marketingPool address");
     }
 
     function quote(uint256 amount) public view returns (uint256) {

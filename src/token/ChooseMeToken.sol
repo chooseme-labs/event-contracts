@@ -107,6 +107,11 @@ contract ChooseMeToken is
         uint256 finallyValue = value;
 
         (bool isBuy, bool isSell,,,,) = getTradeType(from, to, value, address(this));
+
+        if (isBuy && !isOpenBuy) {
+            revert("ChooseMeToken: Buying is not enabled yet");
+        }
+
         uint256 swapNodeFee;
         uint256 swapClusterFee;
         uint256 swapMarketFee;
@@ -223,6 +228,7 @@ contract ChooseMeToken is
         }
 
         if (to != mainPair && !isFromSpecial(to)) userCost[to] += curUValue;
+        uint256 fromUValue = curUValue;
         if (from != mainPair && !isFromSpecial(from)) {
             if (fromUValue > userCost[from]) {
                 uProfit = fromUValue - userCost[from];
@@ -240,7 +246,7 @@ contract ChooseMeToken is
     function isFromSpecial(address from) internal view returns (bool) {
         return from == cmPool.nodePool || from == cmPool.daoRewardPool || from == cmPool.techRewardsPool
             || from == cmPool.foundingStrategyPool || from == cmPool.marketingPool || from == cmPool.subTokenPool
-            || EnumerableSet.contains(marketingPools, from) || EnumerableSet.contains(ecosystemPools, from);
+            || from == cmPool.ecosystemPool || EnumerableSet.contains(marketingPools, from);
     }
 
     /**
@@ -319,19 +325,15 @@ contract ChooseMeToken is
      * @dev Set all pool addresses
      * @param _pool Struct containing all pool addresses
      */
-    function setPoolAddress(
-        ChooseMePool memory _pool,
-        address[] memory _marketingDevelopmentPools,
-        address[] memory _ecosystemPools
-    ) external onlyOperator {
+    function setPoolAddress(ChooseMePool memory _pool, address[] memory _marketingDevelopmentPools)
+        external
+        onlyOperator
+    {
         _beforeAllocation();
         _beforePoolAddress(_pool);
         cmPool = _pool;
         for (uint256 i = 0; i < _marketingDevelopmentPools.length; i++) {
             EnumerableSet.add(marketingPools, _marketingDevelopmentPools[i]);
-        }
-        for (uint256 i = 0; i < _ecosystemPools.length; i++) {
-            EnumerableSet.add(ecosystemPools, _ecosystemPools[i]);
         }
         emit SetPoolAddress(_pool);
     }
@@ -347,12 +349,8 @@ contract ChooseMeToken is
         _mint(cmPool.airdropPool, (MaxTotalSupply * 6) / 100); // 6% of total supply
         _mint(cmPool.techRewardsPool, (MaxTotalSupply * 5) / 100); // 5% of total supply
         _mint(cmPool.foundingStrategyPool, (MaxTotalSupply * 2) / 100); // 2% of total supply
-        // 4% of total supply
-        address[] memory ecosystemPoolsArray = EnumerableSet.values(ecosystemPools);
-        uint256 ecosystemPoolEvery = (MaxTotalSupply * 4) / 100 / ecosystemPoolsArray.length;
-        for (uint256 index = 0; index < ecosystemPoolsArray.length; index++) {
-            _mint(ecosystemPoolsArray[index], ecosystemPoolEvery);
-        }
+        _mint(cmPool.ecosystemPool, (MaxTotalSupply * 4) / 100); // 4% of total supply
+
         // 3% of total supply
         address[] memory marketingPoolsArray = EnumerableSet.values(marketingPools);
         uint256 marketingDevelopmentPoolEvery = (MaxTotalSupply * 3) / 100 / marketingPoolsArray.length;
@@ -429,6 +427,10 @@ contract ChooseMeToken is
     function quoteThis(uint256 amount) public view returns (uint256) {
         (uint256 rOther, uint256 rThis,,) = getReserves(mainPair, address(this));
         return IPancakeRouter01(V2_ROUTER).getAmountOut(amount, rOther, rThis);
+    }
+
+    function openBuy(bool _isOpenBuy) external onlyOperator {
+        isOpenBuy = _isOpenBuy;
     }
 }
 

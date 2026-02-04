@@ -45,7 +45,7 @@ library SwapHelper {
         returns (uint256 liquidityAdded, uint256 amount0Used, uint256 amount1Used)
     {
         uint256 token0Amount = amount / 2;
-        uint256 expectedToken1Amount = (token0Amount * price * 50) / 100 / 1e18;
+        uint256 expectedToken1Amount = (token0Amount * price * 50) / 100 / 1e18; // TODO check price decimals
         uint256 token1Amount =
             SwapHelper.swapV2(router, token0, token1, token0Amount, expectedToken1Amount, address(this));
         IERC20(token0).approve(router, token0Amount);

@@ -25,6 +25,7 @@ interface IChooseMeToken {
         address foundingStrategyPool; // Capital strategy
         address marketingPool; // Marketing development
         address subTokenPool; // Sub token liquidity pool
+        address ecosystemPool; // ecosystemPool
     }
 
     struct ChooseMeTradeFee {

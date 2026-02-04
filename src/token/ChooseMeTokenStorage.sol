@@ -36,7 +36,8 @@ abstract contract ChooseMeTokenStorage is IChooseMeToken {
     EnumerableSet.AddressSet whiteList;
 
     EnumerableSet.AddressSet marketingPools; // Marketing developments
-    EnumerableSet.AddressSet ecosystemPools; // Ecosystem pools
+
+    bool internal isOpenBuy;
 
     uint256[100] private __gap;
 }

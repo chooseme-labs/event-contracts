@@ -116,7 +116,7 @@ interface IStakingManager {
     error StakeHolderUnderStakingError(address tokenAddress);
     error InvalidRewardAmount(address lpAddress, uint256 lpRound);
 
-    function liquidityProviderDeposit(uint256 amount) external;
+    function liquidityProviderDeposit(uint256 amount) external payable;
 
     function getLiquidityProvidersByType(uint8 stakingType) external view returns (address[] memory);
 

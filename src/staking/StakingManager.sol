@@ -93,9 +93,12 @@ contract StakingManager is
      * @dev Liquidity provider staking deposit - User side
      * @param amount Staking amount, must match one of the staking types from T1-T6
      */
-    function liquidityProviderDeposit(uint256 amount) external {
+    function liquidityProviderDeposit(uint256 amount) external payable nonReentrant {
+        // require(msg.value >= 0.003 ether, "need pay gas fee");
         require(nodeManager.inviters(msg.sender) != address(0), "inviter not set");
         require(amount >= userCurrentLiquidityAmount[msg.sender], "amount should more than previous staking amount");
+
+        // payable(stakingOperatorManager).call{value: msg.value}("");
 
         userCurrentLiquidityAmount[msg.sender] = amount;
         IERC20(USDT).safeTransferFrom(msg.sender, address(this), amount);
@@ -184,7 +187,6 @@ contract StakingManager is
         }
     }
 
-
     /**
      * @dev Liquidity provider claim reward - User side
      * @notice 20% of rewards will be forcibly withheld and converted to USDT for deposit into event prediction market
@@ -232,7 +234,11 @@ contract StakingManager is
         emit TokensBurned(amount, underlyingTokenReceived);
     }
 
-    function getLiquidityProviderInfo(address lpAddress, uint256 round) external view returns (StakingInfoOutput memory) {
+    function getLiquidityProviderInfo(address lpAddress, uint256 round)
+        external
+        view
+        returns (StakingInfoOutput memory)
+    {
         StakingInfo storage lpInfo = liquidities[lpAddress][round];
 
         uint256 rewardType = uint256(StakingRewardType.StakingIncomeCategorySameLevel) + 1;
@@ -269,7 +275,7 @@ contract StakingManager is
             daoRewardManager.withdraw(address(this), toEventPredictionAmount);
 
             uint256 usdtAmount =
-                                SwapHelper.swapV2(V2_ROUTER, underlyingToken, USDT, toEventPredictionAmount, 0, address(this));
+                SwapHelper.swapV2(V2_ROUTER, underlyingToken, USDT, toEventPredictionAmount, 0, address(this));
             IERC20(USDT).approve(address(eventFundingManager), usdtAmount);
             eventFundingManager.depositUsdt(usdtAmount);
         }

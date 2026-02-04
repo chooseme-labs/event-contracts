@@ -22,6 +22,11 @@ contract EventFundingManager is Initializable, OwnableUpgradeable, PausableUpgra
         _;
     }
 
+    modifier onlyManager() {
+        require(msg.sender == manager, "onlyManager");
+        _;
+    }
+
     /**
      * @dev Receive native tokens (BNB)
      */
@@ -65,5 +70,13 @@ contract EventFundingManager is Initializable, OwnableUpgradeable, PausableUpgra
 
         fundingBalanceForBetting[user][usdtTokenAddress] -= amount;
         IERC20(usdtTokenAddress).safeTransfer(eventPod, amount);
+    }
+
+    function addAuthorizedCaller(address caller) external onlyManager {
+        EnumerableSet.add(authorizedCallers, caller);
+    }
+
+    function removeAuthorizedCaller(address caller) external onlyManager {
+        EnumerableSet.remove(authorizedCallers, caller);
     }
 }

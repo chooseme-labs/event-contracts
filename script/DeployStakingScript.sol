@@ -71,7 +71,6 @@ contract DeployStakingScript is Script, EnvContract {
     SubTokenFundingManager public subTokenFundingManager;
 
     MarketManager public marketManagerImplementation;
-    MarketManager public marketManager;
     MarketManager[10] public marketManagers;
 
     AirdropManager public airdropManagerImplementation;
@@ -211,8 +210,6 @@ contract DeployStakingScript is Script, EnvContract {
                 )
             );
         }
-        marketManager = marketManagers[0];
-        marketManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(address(marketManager)));
 
         TransparentUpgradeableProxy proxyAirdropManager =
             new TransparentUpgradeableProxy(address(emptyContract), chooseMeMultiSign, "");
@@ -260,10 +257,10 @@ contract DeployStakingScript is Script, EnvContract {
 
         nodeManager.setConfig(address(chooseMeToken), address(proxyDaoRewardManager), address(proxyEventFundingManager));
 
-        // (address user1, address user2, address user3, address user4) = getTopUser();
-        // nodeManager.bindRootInviter(user1, user2);
-        // nodeManager.bindRootInviter(user2, user3);
-        // nodeManager.bindRootInviter(user3, user4);
+        (address user1, address user2, address user3, address user4) = getTopUser();
+        nodeManager.bindRootInviter(user1, user2);
+        nodeManager.bindRootInviter(user2, user3);
+        nodeManager.bindRootInviter(user3, user4);
 
         stakingManagerProxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(address(stakingManager)),
@@ -428,11 +425,11 @@ contract DeployStakingScript is Script, EnvContract {
         IChooseMeToken.ChooseMePool memory pools = IChooseMeToken.ChooseMePool({
             nodePool: address(nodeManager),
             techPool: address(techManager),
-            techFeePool: address(techManager), // TODO
+            techFeePool: 0x6a5B9eA64FB76adbA3990E7F2F5dEc82495f00ba,
             capitalPool: address(capitalManager),
             daoRewardPool: address(daoRewardManager),
             airdropPool: address(airdropManager),
-            marketingFeePool: address(marketManager), // TODO
+            marketingFeePool: 0xbC581DF4915b012B04DD0751540F8f328b2fDf0E,
             ecosystemPool: address(ecosystemManager),
             subTokenPool: address(subTokenFundingManager)
         });
@@ -442,8 +439,6 @@ contract DeployStakingScript is Script, EnvContract {
             marketingPools[i] = address(marketManagers[i]);
         }
 
-        // TODO
-        return;
         chooseMeToken.setPoolAddress(pools, marketingPools);
         console.log("Pool addresses set");
 
@@ -483,7 +478,6 @@ contract DeployStakingScript is Script, EnvContract {
         for (uint256 i = 0; i < 10; i++) {
             marketManagers[i] = MarketManager(payable(proxyMarketManagers[i]));
         }
-        marketManager = marketManagers[0];
         airdropManager = AirdropManager(payable(proxyAirdropManager));
         ecosystemManager = EcosystemManager(payable(proxyEcosystemManager));
         capitalManager = CapitalManager(payable(proxyCapitalManager));
@@ -496,7 +490,6 @@ contract DeployStakingScript is Script, EnvContract {
         fomoTreasureManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(proxyFomoTreasureManager));
         eventFundingManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(proxyEventFundingManager));
         subTokenFundingManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(proxySubTokenFundingManager));
-        marketManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(address(marketManager)));
         airdropManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(proxyAirdropManager));
         ecosystemManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(proxyEcosystemManager));
         capitalManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(proxyCapitalManager));
@@ -542,7 +535,7 @@ contract DeployStakingScript is Script, EnvContract {
             vm.stopBroadcast();
         } else {
             deployerAddress = vm.addr(deployerPrivateKey);
-            distributeRewardAddress = vm.envAddress("DR_ADDRESS");
+            distributeRewardAddress = vm.envAddress("DR_ADDRESS"); //TODO
             chooseMeMultiSign = vm.envAddress("MULTI_SIGNER");
             chooseMeMultiSign2 = vm.envAddress("MULTI_SIGNER_2");
             usdtTokenAddress = vm.envAddress("USDT_TOKEN_ADDRESS");

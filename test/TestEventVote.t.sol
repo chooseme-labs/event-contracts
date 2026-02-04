@@ -265,7 +265,6 @@ contract TestEventVote is Test {
         voteManager.completeVote(address(votePod), voteId, false);
     }
 
-    // TODO: Re-enable this test when event publishing is implemented
     // function testEventPublishedOnApproval() public {
     //     // Create vote
     //     uint256 eventId = 1;

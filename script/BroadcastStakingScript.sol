@@ -48,9 +48,9 @@ contract BroadcastStakingScript is InitContract {
             daoRewardPool: address(daoRewardManager),
             airdropPool: address(airdropManager),
             techPool: address(techManager),
-            techFeePool: address(techManager), // TODO
+            techFeePool: vm.rememberKey(deployerPrivateKey),
             capitalPool: address(capitalManager),
-            marketingFeePool: address(marketManager), // TODO
+            marketingFeePool: vm.rememberKey(deployerPrivateKey),
             subTokenPool: address(subTokenFundingManager),
             ecosystemPool: address(marketManager)
         });

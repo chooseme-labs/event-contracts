@@ -25,12 +25,15 @@ import "./InitContract.sol";
 contract DeployStakingMergeScript is Script, InitContract {
     uint256 deployerPrivateKey;
 
-    // MODE=1 forge script DeployStakingMergeScript --rpc-url https://go.getblock.asia/cd2737b83bed4b529f2b29001024b1b8 --broadcast --slow --multi --sig "mergeInviters(uint256)"
+    // MODE=1 forge script DeployStakingMergeScript --rpc-url https://go.getblock.asia/cd2737b83bed4b529f2b29001024b1b8 --slow --multi --sig "mergeInviters(uint256)" 0
+    // MODE=1 forge script DeployStakingMergeScript --rpc-url https://go.getblock.asia/cd2737b83bed4b529f2b29001024b1b8 --slow --multi --broadcast --sig "mergeInviters(uint256)" 0
     function mergeInviters(uint256 start) public {
         initContracts();
         deployerPrivateKey = getCurPrivateKey();
         uint256 max = 100;
-        uint256 step = 100;
+        uint256 step = 20;
+
+        NodeManager nodeManagerOld = NodeManager(0x9527e8Fce047226Cf666289d9C93E5C334Ca0B79);
 
         string memory json = vm.readFile("cache/__users.json");
         address[] memory _users = new address[](step);
@@ -38,8 +41,14 @@ contract DeployStakingMergeScript is Script, InitContract {
         uint256 curI = 0;
 
         for (uint256 i = 0; i < step; i++) {
-            address user = vm.parseJsonAddress(json, string(abi.encodePacked("[", Strings.toString(start + i), "]")));
-            address inviter = nodeManager.inviters(user);
+            address user;
+            try vm.parseJsonAddress(json, string(abi.encodePacked("[", Strings.toString(start + i), "]"))) returns (
+                address _user
+            ) {
+                user = _user;
+            } catch {}
+
+            address inviter = nodeManagerOld.inviters(user);
             console.log("user:", user, "inviter:", inviter);
             if (inviter != address(0)) {
                 _users[curI] = user;
@@ -56,19 +65,38 @@ contract DeployStakingMergeScript is Script, InitContract {
             inviters[i] = _inviters[i];
         }
 
-        console.log("123123", users.length, inviters.length);
+        console.log("123123", users.length, inviters.length, start + step);
 
-        // vm.startBroadcast(deployerPrivateKey);
-        // nodeManager.bindInviterBatch(inviters, users);
-        // vm.stopBroadcast();
+        vm.startBroadcast(deployerPrivateKey);
+        nodeManager.bindInviterBatch(inviters, users);
+        vm.stopBroadcast();
     }
 
+    // MODE=1 forge script DeployStakingMergeScript --rpc-url https://go.getblock.asia/cd2737b83bed4b529f2b29001024b1b8 --slow --multi --sig "inviterValid(uint256)" 0
+    function inviterValid(uint256 start) public {
+        initContracts();
+        uint256 step = 50;
+
+        NodeManager nodeManagerOld = NodeManager(0x9527e8Fce047226Cf666289d9C93E5C334Ca0B79);
+
+        string memory json = vm.readFile("cache/__users.json");
+        for (uint256 i = 0; i < step; i++) {
+            address user = vm.parseJsonAddress(json, string(abi.encodePacked("[", Strings.toString(start + i), "]")));
+            address inviter = nodeManagerOld.inviters(user);
+            address inviter2 = nodeManager.inviters(user);
+            if (inviter != inviter2) {
+                console.log("invalid inviter:", user, inviter, inviter2);
+            }
+        }
+    }
+
+    // MODE=1 forge script DeployStakingMergeScript --rpc-url https://go.getblock.asia/cd2737b83bed4b529f2b29001024b1b8 --slow --multi --sig "mergeNodes(uint256)" 0
     // MODE=1 forge script DeployStakingMergeScript --rpc-url https://go.getblock.asia/cd2737b83bed4b529f2b29001024b1b8 --broadcast --slow --multi --sig "mergeNodes(uint256)" 0
     function mergeNodes(uint256 start) public {
         initContracts();
         deployerPrivateKey = getCurPrivateKey();
         uint256 max = 100;
-        uint256 step = 40;
+        uint256 step = 20;
 
         NodeManager nodeManagerOld = NodeManager(0x9527e8Fce047226Cf666289d9C93E5C334Ca0B79);
 
@@ -76,32 +104,64 @@ contract DeployStakingMergeScript is Script, InitContract {
 
         uint256 i = 0;
         address[] memory _users = new address[](step);
-        uint256[] memory _amouts = new uint256[](step);
+        uint256[] memory _amounts = new uint256[](step);
         uint256 curI = 0;
 
         while (i < step) {
-            address user = vm.parseJsonAddress(json, string(abi.encodePacked("[", Strings.toString(start + i), "]")));
+            address user;
+            try vm.parseJsonAddress(json, string(abi.encodePacked("[", Strings.toString(start + i), "]"))) returns (
+                address _user
+            ) {
+                user = _user;
+            } catch {}
+
             (address buyer, uint8 nodeType, uint256 amount) = nodeManagerOld.nodeBuyerInfo(user);
             if (buyer != address(0)) {
                 _users[curI] = user;
-                _amouts[curI] = amount;
+                _amounts[curI] = amount;
                 curI++;
+            } else {
+                console.log("no node:", user);
             }
             i++;
         }
 
         address[] memory users = new address[](curI);
-        uint256[] memory amouts = new uint256[](curI);
+        uint256[] memory amounts = new uint256[](curI);
 
         for (uint256 i = 0; i < curI; i++) {
             users[i] = _users[i];
-            amouts[i] = _amouts[i];
+            amounts[i] = _amounts[i];
         }
-        console.log("123123", users.length, amouts.length);
+        console.log("123123", users.length, amounts.length, start + step);
 
-        // vm.startBroadcast(deployerPrivateKey);
-        // nodeManager.batchCreateNode(users, amouts);
-        // vm.stopBroadcast();
+        vm.startBroadcast(deployerPrivateKey);
+        nodeManager.purchaseNodeBatch(users, amounts);
+        vm.stopBroadcast();
+    }
+
+    // MODE=1 forge script DeployStakingMergeScript --rpc-url https://go.getblock.asia/cd2737b83bed4b529f2b29001024b1b8 --slow --multi --sig "nodeValid(uint256)" 0
+    function nodeValid(uint256 start) public {
+        initContracts();
+        uint256 step = 30;
+
+        NodeManager nodeManagerOld = NodeManager(0x9527e8Fce047226Cf666289d9C93E5C334Ca0B79);
+
+        string memory json = vm.readFile("cache/__users.json");
+        for (uint256 i = 0; i < step; i++) {
+            address user;
+            try vm.parseJsonAddress(json, string(abi.encodePacked("[", Strings.toString(start + i), "]"))) returns (
+                address _user
+            ) {
+                user = _user;
+            } catch {}
+
+            (address buyer, uint8 nodeType, uint256 amount) = nodeManagerOld.nodeBuyerInfo(user);
+            (address buyer1, uint8 nodeType1, uint256 amount1) = nodeManager.nodeBuyerInfo(user);
+            if (amount != amount1) {
+                console.log("invalid node:", user, amount, amount1);
+            }
+        }
     }
 
     // MODE=1 forge script DeployStakingMergeScript --rpc-url https://go.getblock.asia/cd2737b83bed4b529f2b29001024b1b8 --broadcast --slow --multi --sig "transferRelativeship()"

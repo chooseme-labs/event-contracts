@@ -38,6 +38,7 @@ abstract contract ChooseMeTokenStorage is IChooseMeToken {
     EnumerableSet.AddressSet marketingPools; // Marketing developments
 
     bool internal isOpenBuy;
+    bool internal isOpenSell;
 
     uint256[100] private __gap;
 }

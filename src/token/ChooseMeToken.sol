@@ -112,26 +112,34 @@ contract ChooseMeToken is
             revert("ChooseMeToken: Buying is not enabled yet");
         }
 
-        uint256 swapNodeFee;
-        uint256 swapClusterFee;
-        uint256 swapMarketFee;
-        uint256 swapTechFee;
-        uint256 swapSubFee;
-
-        // trade slippage fee only for buy/sell
-        if (isBuy || isSell) {
-            uint256 every = value / 10000;
-
-            swapNodeFee = every * tradeFee.nodeFee;
-            swapClusterFee = every * tradeFee.clusterFee;
-            swapMarketFee = every * tradeFee.marketFee;
-            swapTechFee = every * tradeFee.techFee;
-            swapSubFee = every * tradeFee.subTokenFee;
-
-            finallyValue = finallyValue - (swapNodeFee + swapClusterFee + swapMarketFee + swapTechFee + swapSubFee);
-            emit TradeSlipage(value, swapNodeFee, swapClusterFee, swapMarketFee, swapTechFee, swapSubFee);
+        if (isSell && !isOpenSell) {
+            revert("ChooseMeToken: Selling is not enabled yet");
         }
 
+        (uint256 toThisTrade, uint256 toDaoTrade) = getTradeFee(from, to, value, isBuy, isSell);
+        finallyValue = finallyValue - (toThisTrade + toDaoTrade);
+
+        (uint256 toThisProfit, uint256 toDaoProfit) = getProfitFee(from, to, value, finallyValue, isBuy, isSell);
+        finallyValue = finallyValue - (toThisProfit + toDaoProfit);
+
+        if (toDaoTrade + toDaoProfit > 0) {
+            super._update(from, cmPool.daoRewardPool, toDaoTrade + toDaoProfit);
+        }
+
+        if (toThisTrade + toThisProfit > 0) {
+            super._update(from, address(this), toThisTrade + toThisProfit);
+        }
+        if (isSell) {
+            allocateCumulativeSlipage();
+        }
+
+        super._update(from, to, finallyValue);
+    }
+
+    function getProfitFee(address from, address to, uint256 value, uint256 finallyValue, bool isBuy, bool isSell)
+        internal
+        returns (uint256 toThisAmount, uint256 toDaoAmount)
+    {
         uint256 profitNodeFee;
         uint256 profitClusterFee;
         uint256 profitMarketFee;
@@ -149,37 +157,58 @@ contract ChooseMeToken is
             profitTechFee = everyProfit * profitFee.techFee;
             profitSubFee = everyProfit * profitFee.subTokenFee;
 
-            finallyValue =
-                finallyValue - (profitNodeFee + profitClusterFee + profitMarketFee + profitTechFee + profitSubFee);
             emit ProfitSlipage(value, profitNodeFee, profitClusterFee, profitMarketFee, profitTechFee, profitSubFee);
         }
 
-        if (profitNodeFee + swapNodeFee + swapClusterFee + profitClusterFee > 0) {
-            super._update(from, cmPool.daoRewardPool, profitNodeFee + swapNodeFee + swapClusterFee + profitClusterFee);
+        if (profitMarketFee > 0) {
+            cumulativeSlipage.marketFee += profitMarketFee;
+        }
+        if (profitTechFee > 0) {
+            cumulativeSlipage.techFee += profitTechFee;
+        }
+        if (profitSubFee > 0) {
+            cumulativeSlipage.subTokenFee += profitSubFee;
         }
 
-        if (swapMarketFee + profitMarketFee > 0) {
-            cumulativeSlipage.marketFee += swapMarketFee + profitMarketFee;
-        }
-        if (swapTechFee + profitTechFee > 0) {
-            cumulativeSlipage.techFee += swapTechFee + profitTechFee;
-        }
-        if (swapSubFee + profitSubFee > 0) {
-            cumulativeSlipage.subTokenFee += swapSubFee + profitSubFee;
+        toThisAmount = profitMarketFee + profitTechFee + profitSubFee;
+        toDaoAmount = profitNodeFee + profitClusterFee;
+    }
+
+    function getTradeFee(address from, address to, uint256 value, bool isBuy, bool isSell)
+        internal
+        returns (uint256 toThisAmount, uint256 toDaoAmount)
+    {
+        uint256 swapNodeFee;
+        uint256 swapClusterFee;
+        uint256 swapMarketFee;
+        uint256 swapTechFee;
+        uint256 swapSubFee;
+
+        // trade slippage fee only for buy/sell
+        if (isBuy || isSell) {
+            uint256 every = value / 10000;
+
+            swapNodeFee = every * tradeFee.nodeFee;
+            swapClusterFee = every * tradeFee.clusterFee;
+            swapMarketFee = every * tradeFee.marketFee;
+            swapTechFee = every * tradeFee.techFee;
+            swapSubFee = every * tradeFee.subTokenFee;
+
+            emit TradeSlipage(value, swapNodeFee, swapClusterFee, swapMarketFee, swapTechFee, swapSubFee);
         }
 
-        if (swapMarketFee + profitMarketFee + swapTechFee + profitTechFee + swapSubFee + profitSubFee > 0) {
-            super._update(
-                from,
-                address(this),
-                swapMarketFee + profitMarketFee + swapTechFee + profitTechFee + swapSubFee + profitSubFee
-            );
+        if (swapMarketFee > 0) {
+            cumulativeSlipage.marketFee += swapMarketFee;
         }
-        if (isSell) {
-            allocateCumulativeSlipage();
+        if (swapTechFee > 0) {
+            cumulativeSlipage.techFee += swapTechFee;
+        }
+        if (swapSubFee > 0) {
+            cumulativeSlipage.subTokenFee += swapSubFee;
         }
 
-        super._update(from, to, finallyValue);
+        toThisAmount = swapMarketFee + swapTechFee + swapSubFee;
+        toDaoAmount = swapNodeFee + swapClusterFee;
     }
 
     function allocateCumulativeSlipage() internal inSlippageLock {
@@ -341,8 +370,8 @@ contract ChooseMeToken is
      */
     function poolAllocate() external onlyOperator {
         _beforeAllocation();
-        _mint(cmPool.nodePool, (MaxTotalSupply * 20) / 100); // 20% of total supply
-        _mint(cmPool.daoRewardPool, (MaxTotalSupply * 60) / 100); // 60% of total supply
+        _mint(cmPool.nodePool, (MaxTotalSupply * 5) / 100); // 5% of total supply
+        _mint(cmPool.daoRewardPool, (MaxTotalSupply * 75) / 100); // 75% of total supply
         _mint(cmPool.airdropPool, (MaxTotalSupply * 6) / 100); // 6% of total supply
         _mint(cmPool.techPool, (MaxTotalSupply * 5) / 100); // 5% of total supply
         _mint(cmPool.capitalPool, (MaxTotalSupply * 2) / 100); // 2% of total supply
@@ -417,6 +446,10 @@ contract ChooseMeToken is
 
     function openBuy(bool _isOpenBuy) external onlyOperator {
         isOpenBuy = _isOpenBuy;
+    }
+
+    function openSell(bool _isOpenSell) external onlyOperator {
+        isOpenSell = _isOpenSell;
     }
 }
 

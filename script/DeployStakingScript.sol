@@ -139,7 +139,7 @@ contract DeployStakingScript is Script, EnvContract {
         vm.writeJson(finalJSON, getDeployPath());
     }
 
-    // MODE=1 forge script DeployStakingScript --sig "deploy2()"  --slow --multi --rpc-url https://go.getblock.asia/cd2737b83bed4b529f2b29001024b1b8 --broadcast
+    // MODE=1 forge script DeployStakingScript --sig "deploy2()"  --slow --multi --rpc-url https://go.getblock.asia/cd2737b83bed4b529f2b29001024b1b8 --broadcast --verify --etherscan-api-key I4C1AKJT8J9KJVCXHZKK317T3XV8IVASRX
     function deploy2() public {
         (
             address deployerAddress,
@@ -401,27 +401,26 @@ contract DeployStakingScript is Script, EnvContract {
         //     ITransparentUpgradeableProxy(address(nodeManager)), address(nodeManagerImplementation), ""
         // );
 
-        stakingManagerImplementation = new StakingManager();
-        stakingManagerProxyAdmin.upgradeAndCall(
-            ITransparentUpgradeableProxy(address(stakingManager)), address(stakingManagerImplementation), ""
-        );
-
-        // chooseMeTokenImplementation = new ChooseMeToken();
-        // chooseMeTokenProxyAdmin.upgradeAndCall(
-        //     ITransparentUpgradeableProxy(address(chooseMeToken)), address(chooseMeTokenImplementation), ""
+        // stakingManagerImplementation = new StakingManager();
+        // stakingManagerProxyAdmin.upgradeAndCall(
+        //     ITransparentUpgradeableProxy(address(stakingManager)), address(stakingManagerImplementation), ""
         // );
+
+        chooseMeTokenImplementation = new ChooseMeToken();
+        console.log("chooseMeTokenImplementation:", address(chooseMeTokenImplementation));
+        chooseMeTokenProxyAdmin.upgradeAndCall(
+            ITransparentUpgradeableProxy(address(chooseMeToken)), address(chooseMeTokenImplementation), ""
+        );
 
         vm.stopBroadcast();
     }
 
-    // forge script DeployStakingScript --sig "initChooseMeToken()"  --slow --multi --rpc-url https://go.getblock.asia/cd2737b83bed4b529f2b29001024b1b8 --broadcast
+    // MODE=1 forge script DeployStakingScript --sig "initChooseMeToken()"  --slow --multi --rpc-url https://go.getblock.asia/cd2737b83bed4b529f2b29001024b1b8 --broadcast
     function initChooseMeToken() public {
         initContracts();
 
         if (chooseMeToken.balanceOf(address(daoRewardManager)) > 0) return;
-        getCurPrivateKey();
 
-        vm.startBroadcast(deployerPrivateKey);
         IChooseMeToken.ChooseMePool memory pools = IChooseMeToken.ChooseMePool({
             nodePool: address(nodeManager),
             techPool: address(techManager),
@@ -439,6 +438,8 @@ contract DeployStakingScript is Script, EnvContract {
             marketingPools[i] = address(marketManagers[i]);
         }
 
+        _getCurPrivateKey();
+        vm.startBroadcast(deployerPrivateKey);
         chooseMeToken.setPoolAddress(pools, marketingPools);
         console.log("Pool addresses set");
 

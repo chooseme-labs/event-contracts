@@ -50,7 +50,7 @@ contract DeployStakingMergeScript is Script, InitContract {
 
             address inviter = nodeManagerOld.inviters(user);
             address inviter2 = nodeManager.inviters(user);
-            console.log("user:", user, "inviter:", inviter);
+            // console.log("user:", user, "inviter:", inviter);
             if (inviter != address(0) && inviter2 == address(0)) {
                 _users[curI] = user;
                 _inviters[curI] = inviter;
@@ -64,6 +64,7 @@ contract DeployStakingMergeScript is Script, InitContract {
         for (uint256 i = 0; i < curI; i++) {
             users[i] = _users[i];
             inviters[i] = _inviters[i];
+            console.log("==========", i, _users[i], _inviters[i]);
         }
 
         console.log("123123", users.length, inviters.length, start + step);

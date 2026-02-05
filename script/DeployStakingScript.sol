@@ -396,14 +396,59 @@ contract DeployStakingScript is Script, EnvContract {
 
         vm.startBroadcast(deployerPrivateKey);
 
-        nodeManagerImplementation = new NodeManager();
-        nodeManagerProxyAdmin.upgradeAndCall(
-            ITransparentUpgradeableProxy(address(nodeManager)), address(nodeManagerImplementation), ""
+        // nodeManagerImplementation = new NodeManager();
+        // nodeManagerProxyAdmin.upgradeAndCall(
+        //     ITransparentUpgradeableProxy(address(nodeManager)), address(nodeManagerImplementation), ""
+        // );
+
+        // stakingManagerImplementation = new StakingManager();
+        // stakingManagerProxyAdmin.upgradeAndCall(
+        //     ITransparentUpgradeableProxy(address(stakingManager)), address(stakingManagerImplementation), ""
+        // );
+
+        // Upgrade EventFundingManager
+        eventFundingManagerImplementation = new EventFundingManager();
+        eventFundingManagerProxyAdmin.upgradeAndCall(
+            ITransparentUpgradeableProxy(address(eventFundingManager)), address(eventFundingManagerImplementation), ""
         );
 
-        stakingManagerImplementation = new StakingManager();
-        stakingManagerProxyAdmin.upgradeAndCall(
-            ITransparentUpgradeableProxy(address(stakingManager)), address(stakingManagerImplementation), ""
+        // Upgrade AirdropManager
+        airdropManagerImplementation = new AirdropManager();
+        airdropManagerProxyAdmin.upgradeAndCall(
+            ITransparentUpgradeableProxy(address(airdropManager)), address(airdropManagerImplementation), ""
+        );
+
+        // Upgrade CapitalManager
+        capitalManagerImplementation = new CapitalManager();
+        capitalManagerProxyAdmin.upgradeAndCall(
+            ITransparentUpgradeableProxy(address(capitalManager)), address(capitalManagerImplementation), ""
+        );
+
+        // Upgrade DaoRewardManager
+        daoRewardManagerImplementation = new DaoRewardManager();
+        daoRewardManagerProxyAdmin.upgradeAndCall(
+            ITransparentUpgradeableProxy(address(daoRewardManager)), address(daoRewardManagerImplementation), ""
+        );
+
+        // Upgrade EcosystemManager
+        ecosystemManagerImplementation = new EcosystemManager();
+        ecosystemManagerProxyAdmin.upgradeAndCall(
+            ITransparentUpgradeableProxy(address(ecosystemManager)), address(ecosystemManagerImplementation), ""
+        );
+
+        // Upgrade MarketManager (all 10 instances)
+        marketManagerImplementation = new MarketManager();
+        for (uint256 i = 0; i < 10; i++) {
+            ProxyAdmin tempMarketManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(address(marketManagers[i])));
+            tempMarketManagerProxyAdmin.upgradeAndCall(
+                ITransparentUpgradeableProxy(address(marketManagers[i])), address(marketManagerImplementation), ""
+            );
+        }
+
+        // Upgrade TechManager
+        techManagerImplementation = new TechManager();
+        techManagerProxyAdmin.upgradeAndCall(
+            ITransparentUpgradeableProxy(address(techManager)), address(techManagerImplementation), ""
         );
 
         // chooseMeTokenImplementation = new ChooseMeToken();

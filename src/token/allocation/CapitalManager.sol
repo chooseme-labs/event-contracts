@@ -55,6 +55,10 @@ contract CapitalManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
         authorizedCallers.remove(caller);
     }
 
+    function getAuthorizedCallers() external view returns (address[] memory) {
+        return EnumerableSet.values(authorizedCallers);
+    }
+
     /**
      * @dev Set the manager address (only owner can call)
      * @param _manager New manager address

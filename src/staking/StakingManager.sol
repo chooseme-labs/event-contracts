@@ -89,6 +89,10 @@ contract StakingManager is
         manager = _manager;
     }
 
+    function setStakingOperatorManager(address _stakingOperatorManager) external onlyManager {
+        stakingOperatorManager = _stakingOperatorManager;
+    }
+
     /**
      * @dev Liquidity provider staking deposit - User side
      * @param amount Staking amount, must match one of the staking types from T1-T6

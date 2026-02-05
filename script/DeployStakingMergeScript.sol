@@ -49,8 +49,9 @@ contract DeployStakingMergeScript is Script, InitContract {
             } catch {}
 
             address inviter = nodeManagerOld.inviters(user);
+            address inviter2 = nodeManager.inviters(user);
             console.log("user:", user, "inviter:", inviter);
-            if (inviter != address(0)) {
+            if (inviter != address(0) && inviter2 == address(0)) {
                 _users[curI] = user;
                 _inviters[curI] = inviter;
                 curI++;
@@ -116,7 +117,9 @@ contract DeployStakingMergeScript is Script, InitContract {
             } catch {}
 
             (address buyer, uint8 nodeType, uint256 amount) = nodeManagerOld.nodeBuyerInfo(user);
-            if (buyer != address(0)) {
+
+            (address buyer2, uint8 nodeType2, uint256 amount2) = nodeManager.nodeBuyerInfo(user);
+            if (buyer != address(0) && buyer2 == address(0)) {
                 _users[curI] = user;
                 _amounts[curI] = amount;
                 curI++;
@@ -167,45 +170,53 @@ contract DeployStakingMergeScript is Script, InitContract {
     // MODE=1 forge script DeployStakingMergeScript --rpc-url https://go.getblock.asia/cd2737b83bed4b529f2b29001024b1b8 --broadcast --slow --multi --sig "transferRelativeship()"
     function transferRelativeship() public {
         initContracts();
+        uint256 deployerPrivateKey = getCurPrivateKey();
+        vm.startBroadcast(deployerPrivateKey);
 
         address OWNER = vm.envAddress("OWNER");
         address MANAGER = vm.envAddress("MANAGER");
         address OPERATOR = vm.envAddress("OPERATOR");
+        address CALLER = vm.envAddress("CALLER");
 
-        nodeManager.transferOwnership(OWNER);
+        chooseMeToken.setOperator(OPERATOR);
+        chooseMeToken.transferOwnership(OWNER);
+
         nodeManager.setManager(MANAGER);
+        nodeManager.transferOwnership(OWNER);
+        // nodeManager.setDistributeRewardAddress(CALLER);
 
-        stakingManager.transferOwnership(OWNER);
         stakingManager.setManager(MANAGER);
+        stakingManager.transferOwnership(OWNER);
+        // stakingManager.setStakingOperatorManager(CALLER);
 
-        daoRewardManager.transferOwnership(OWNER);
         daoRewardManager.setManager(MANAGER);
+        daoRewardManager.transferOwnership(OWNER);
 
-        fomoTreasureManager.transferOwnership(OWNER);
         fomoTreasureManager.setManager(MANAGER);
+        fomoTreasureManager.transferOwnership(OWNER);
 
-        eventFundingManager.transferOwnership(OWNER);
         eventFundingManager.setManager(MANAGER);
+        eventFundingManager.transferOwnership(OWNER);
 
-        subTokenFundingManager.transferOwnership(OWNER);
-        subTokenFundingManager.setManager(MANAGER);
         subTokenFundingManager.setOperator(OPERATOR);
+        subTokenFundingManager.setManager(MANAGER);
+        subTokenFundingManager.transferOwnership(OWNER);
 
-        airdropManager.transferOwnership(OWNER);
         airdropManager.setManager(MANAGER);
+        airdropManager.transferOwnership(OWNER);
 
-        ecosystemManager.transferOwnership(OWNER);
         ecosystemManager.setManager(MANAGER);
+        ecosystemManager.transferOwnership(OWNER);
 
-        capitalManager.transferOwnership(OWNER);
         capitalManager.setManager(MANAGER);
+        capitalManager.transferOwnership(OWNER);
 
-        techManager.transferOwnership(OWNER);
         techManager.setManager(MANAGER);
+        techManager.transferOwnership(OWNER);
 
         for (uint256 i = 0; i < 10; i++) {
-            marketManagers[i].transferOwnership(OWNER);
             marketManagers[i].setManager(MANAGER);
+            marketManagers[i].transferOwnership(OWNER);
         }
     }
 }

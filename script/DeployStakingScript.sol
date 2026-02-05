@@ -396,21 +396,21 @@ contract DeployStakingScript is Script, EnvContract {
 
         vm.startBroadcast(deployerPrivateKey);
 
-        // nodeManagerImplementation = new NodeManager();
-        // nodeManagerProxyAdmin.upgradeAndCall(
-        //     ITransparentUpgradeableProxy(address(nodeManager)), address(nodeManagerImplementation), ""
-        // );
-
-        // stakingManagerImplementation = new StakingManager();
-        // stakingManagerProxyAdmin.upgradeAndCall(
-        //     ITransparentUpgradeableProxy(address(stakingManager)), address(stakingManagerImplementation), ""
-        // );
-
-        chooseMeTokenImplementation = new ChooseMeToken();
-        console.log("chooseMeTokenImplementation:", address(chooseMeTokenImplementation));
-        chooseMeTokenProxyAdmin.upgradeAndCall(
-            ITransparentUpgradeableProxy(address(chooseMeToken)), address(chooseMeTokenImplementation), ""
+        nodeManagerImplementation = new NodeManager();
+        nodeManagerProxyAdmin.upgradeAndCall(
+            ITransparentUpgradeableProxy(address(nodeManager)), address(nodeManagerImplementation), ""
         );
+
+        stakingManagerImplementation = new StakingManager();
+        stakingManagerProxyAdmin.upgradeAndCall(
+            ITransparentUpgradeableProxy(address(stakingManager)), address(stakingManagerImplementation), ""
+        );
+
+        // chooseMeTokenImplementation = new ChooseMeToken();
+        // console.log("chooseMeTokenImplementation:", address(chooseMeTokenImplementation));
+        // chooseMeTokenProxyAdmin.upgradeAndCall(
+        //     ITransparentUpgradeableProxy(address(chooseMeToken)), 0x461B9D6D2054Fbe87573b3EEF3d3EB0fCdF02d21, ""
+        // );
 
         vm.stopBroadcast();
     }

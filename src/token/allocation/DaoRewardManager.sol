@@ -57,6 +57,10 @@ contract DaoRewardManager is Initializable, OwnableUpgradeable, PausableUpgradea
         }
     }
 
+    function getAuthorizedCallers() external view returns (address[] memory) {
+        return EnumerableSet.values(authorizedCallers);
+    }
+
     /**
      * @dev Withdraw tokens from the reward pool
      * @param recipient Recipient address

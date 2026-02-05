@@ -55,6 +55,10 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
         manager = _manager;
     }
 
+    function setDistributeRewardAddress(address _distributeRewardAddress) external onlyManager {
+        distributeRewardAddress = _distributeRewardAddress;
+    }
+
     /**
      * @dev setConfig
      * @param _daoRewardManager DAO reward manager contract address

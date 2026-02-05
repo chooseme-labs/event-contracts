@@ -79,4 +79,8 @@ contract EventFundingManager is Initializable, OwnableUpgradeable, PausableUpgra
     function removeAuthorizedCaller(address caller) external onlyManager {
         EnumerableSet.remove(authorizedCallers, caller);
     }
+
+    function getAuthorizedCallers() external view returns (address[] memory) {
+        return EnumerableSet.values(authorizedCallers);
+    }
 }

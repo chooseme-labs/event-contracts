@@ -108,7 +108,7 @@ contract ChooseMeToken is
 
         (bool isBuy, bool isSell,,,,) = getTradeType(from, to, value, address(this));
 
-        if (isBuy && !isOpenBuy) {
+        if (!isStakingManager(addr) && (isBuy && !isOpenBuy)) {
             revert("ChooseMeToken: Buying is not enabled yet");
         }
 
@@ -276,6 +276,10 @@ contract ChooseMeToken is
         return from == cmPool.nodePool || from == cmPool.daoRewardPool || from == cmPool.techPool
             || from == cmPool.capitalPool || from == cmPool.subTokenPool || from == cmPool.ecosystemPool
             || EnumerableSet.contains(marketingPools, from);
+    }
+
+    function isStakingManager(address addr) internal view returns (bool) {
+        return addr == stakingManager;
     }
 
     /**

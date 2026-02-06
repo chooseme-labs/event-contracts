@@ -124,6 +124,11 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
         }
     }
 
+    function initNodeAmounts() external onlyManager {
+        nodeAmounts[buyDistributedNode] = 600 * 10 ** 18;
+        nodeAmounts[buyClusterNode] = 14000 * 10 ** 18;
+    }
+
     /**
      * @dev Distribute node rewards (only reward distribution manager can call)
      * @param recipient Address receiving the reward
@@ -141,8 +146,9 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
         require(!rewardClaimInfo[recipient].isOutOf, "Recipient is out of rewards");
 
         uint256 usdtRewardAmount = usdtAmount;
-        if (rewardClaimInfo[recipient].totalUReward + usdtRewardAmount > nodeBuyerInfo[recipient].amount * 3) {
-            usdtRewardAmount = nodeBuyerInfo[recipient].amount * 3 - rewardClaimInfo[recipient].totalUReward;
+        uint256 outAmount = nodeAmounts[nodeBuyerInfo[recipient].amount] * 3;
+        if (rewardClaimInfo[recipient].totalUReward + usdtRewardAmount > outAmount) {
+            usdtRewardAmount = outAmount - rewardClaimInfo[recipient].totalUReward;
         }
 
         rewardClaimInfo[recipient].totalUReward += usdtRewardAmount;
@@ -151,7 +157,7 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
         rewardClaimInfo[recipient].totalReward += tokenAmount;
         nodeRewardTypeInfo[recipient][incomeType].amount += tokenAmount;
 
-        if (rewardClaimInfo[recipient].totalUReward >= nodeBuyerInfo[recipient].amount * 3) {
+        if (rewardClaimInfo[recipient].totalUReward >= outAmount) {
             rewardClaimInfo[recipient].isOutOf = true;
             emit outOfAchieveReturnsNodeExit({
                 recipient: recipient, totalReward: rewardClaimInfo[recipient].totalReward, blockNumber: block.number

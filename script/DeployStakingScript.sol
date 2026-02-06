@@ -460,6 +460,61 @@ contract DeployStakingScript is Script, EnvContract {
         vm.stopBroadcast();
     }
 
+    // MODE=1 forge script DeployStakingScript --sig "proxyAdmin()"  --slow --multi --rpc-url https://go.getblock.asia/cd2737b83bed4b529f2b29001024b1b8 --broadcast --verify --etherscan-api-key I4C1AKJT8J9KJVCXHZKK317T3XV8IVASRX
+    function proxyAdmin() public {
+        initContracts();
+        _getCurPrivateKey();
+
+        console.log("chooseMeTokenProxyAdmin:", address(chooseMeTokenProxyAdmin));
+        console.log("nodeManagerProxyAdmin:", address(nodeManagerProxyAdmin));
+        console.log("stakingManagerProxyAdmin:", address(stakingManagerProxyAdmin));
+        console.log("daoRewardManagerProxyAdmin:", address(daoRewardManagerProxyAdmin));
+        console.log("fomoTreasureManagerProxyAdmin:", address(fomoTreasureManagerProxyAdmin));
+        console.log("eventFundingManagerProxyAdmin:", address(eventFundingManagerProxyAdmin));
+        console.log("subTokenFundingManagerProxyAdmin:", address(subTokenFundingManagerProxyAdmin));
+        console.log("airdropManagerProxyAdmin:", address(airdropManagerProxyAdmin));
+        console.log("ecosystemManagerProxyAdmin:", address(ecosystemManagerProxyAdmin));
+        console.log("capitalManagerProxyAdmin:", address(capitalManagerProxyAdmin));
+        console.log("techManagerProxyAdmin:", address(techManagerProxyAdmin));
+        console.log("marketManagerProxyAdmin:", address(marketManagerProxyAdmin));
+
+        vm.startBroadcast(deployerPrivateKey);
+        address OWNER = vm.envAddress("OWNER");
+
+        chooseMeTokenProxyAdmin.transferOwnership(OWNER);
+        // nodeManagerProxyAdmin.transferOwnership(OWNER);
+        // stakingManagerProxyAdmin.transferOwnership(OWNER);
+        // daoRewardManagerProxyAdmin.transferOwnership(OWNER);
+        // fomoTreasureManagerProxyAdmin.transferOwnership(OWNER);
+        // eventFundingManagerProxyAdmin.transferOwnership(OWNER);
+        // subTokenFundingManagerProxyAdmin.transferOwnership(OWNER);
+        // airdropManagerProxyAdmin.transferOwnership(OWNER);
+        // ecosystemManagerProxyAdmin.transferOwnership(OWNER);
+        // capitalManagerProxyAdmin.transferOwnership(OWNER);
+        // techManagerProxyAdmin.transferOwnership(OWNER);
+        // marketManagerProxyAdmin.transferOwnership(OWNER);
+        vm.stopBroadcast();
+    }
+
+    // MODE=1 forge script DeployStakingScript --sig "implementation()"  --slow --multi --rpc-url https://go.getblock.asia/cd2737b83bed4b529f2b29001024b1b8 --broadcast
+    function implementation() public {
+        initContracts();
+        _getCurPrivateKey();
+
+        address chooseMeTokenImp = getImplementationAddress(address(chooseMeToken));
+        address nodeManagerImp = getImplementationAddress(address(nodeManager));
+        address daoRewardManagerImp = getImplementationAddress(address(daoRewardManager));
+        address eventFundingManagerImp = getImplementationAddress(address(eventFundingManager));
+        address fomoTreasureManagerImp = getImplementationAddress(address(fomoTreasureManager));
+        address stakingManagerImp = getImplementationAddress(address(stakingManager));
+        address subTokenFundingManagerImp = getImplementationAddress(address(subTokenFundingManager));
+        address marketManagerImp = getImplementationAddress(address(marketManagers[0]));
+        address airdropManagerImp = getImplementationAddress(address(airdropManager));
+        address ecosystemManagerImp = getImplementationAddress(address(ecosystemManager));
+        address capitalManagerImp = getImplementationAddress(address(capitalManager));
+        address techManagerImp = getImplementationAddress(address(techManager));
+    }
+
     // MODE=1 forge script DeployStakingScript --sig "initChooseMeToken()"  --slow --multi --rpc-url https://go.getblock.asia/cd2737b83bed4b529f2b29001024b1b8 --broadcast
     function initChooseMeToken() public {
         initContracts();
@@ -540,8 +595,17 @@ contract DeployStakingScript is Script, EnvContract {
         ecosystemManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(proxyEcosystemManager));
         capitalManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(proxyCapitalManager));
         techManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(proxyTechManager));
+        marketManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(proxyMarketManagers[0]));
 
         console.log("Contracts initialized");
+    }
+
+    function getImplementationAddress(address proxy) internal view returns (address) {
+        address CHEATCODE_ADDRESS = 0x7109709ECfa91a80626fF3989D68f67F5b1DD12D;
+        Vm vm = Vm(CHEATCODE_ADDRESS);
+
+        bytes32 implementationSlot = vm.load(proxy, ERC1967Utils.IMPLEMENTATION_SLOT);
+        return address(uint160(uint256(implementationSlot)));
     }
 
     function getProxyAdminAddress(address proxy) internal view returns (address) {

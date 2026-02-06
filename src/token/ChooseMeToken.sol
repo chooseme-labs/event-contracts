@@ -108,7 +108,7 @@ contract ChooseMeToken is
 
         (bool isBuy, bool isSell,,,,) = getTradeType(from, to, value, address(this));
 
-        if (!isStakingManager(addr) && (isBuy && !isOpenBuy)) {
+        if (!isStakingManager(to) && (isBuy && !isOpenBuy)) {
             revert("ChooseMeToken: Buying is not enabled yet");
         }
 

@@ -182,7 +182,7 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
      * @param amount reward amount to claim
      * @notice 20% of rewards will be forcibly withheld and converted to USDT for deposit into event prediction market
      */
-    function claimReward(uint256 amount) external nonReentrant {
+    function claimReward(uint256 amount) external {
         require(
             amount <= rewardClaimInfo[msg.sender].totalReward - rewardClaimInfo[msg.sender].claimedReward,
             "Claim amount mismatch"

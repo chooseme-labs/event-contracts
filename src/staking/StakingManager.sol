@@ -195,11 +195,11 @@ contract StakingManager is
      * @dev Liquidity provider claim reward - User side
      * @notice 20% of rewards will be forcibly withheld and converted to USDT for deposit into event prediction market
      */
-    function liquidityProviderClaimReward(uint256 round) external nonReentrant {
+    function liquidityProviderClaimReward(uint256 round) external {
         _liquidityProviderClaimReward(msg.sender, round);
     }
 
-    function _liquidityProviderClaimRewardBatch() external nonReentrant {
+    function _liquidityProviderClaimRewardBatch() external {
         address user = msg.sender;
         uint256 round = lpStakingRound[user];
         for (uint256 i = 0; i < round; i++) {

@@ -260,4 +260,10 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
             emit PurchaseNodes({buyer: buyer, amount: amount, nodeType: buyNodeType});
         }
     }
+
+    function changeNodeBuyerInfo(address buyer, uint256 amount) public onlyManager {
+        uint8 buyNodeType = matchNodeTypeByAmount(amount);
+        nodeBuyerInfo[buyer].nodeType = buyNodeType;
+        nodeBuyerInfo[buyer].amount = amount;
+    }
 }

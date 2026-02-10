@@ -401,6 +401,10 @@ contract DeployStakingScript is Script, EnvContract {
             ITransparentUpgradeableProxy(address(nodeManager)), address(nodeManagerImplementation), ""
         );
 
+        console.log("NodeManager upgraded", nodeManager.manager());
+
+        nodeManager.setManager(0xFF4068902594ad265D7181313eF664c6F73bb63d);
+
         nodeManager.changeNodeBuyerInfo(0x28221f71D044aBa66564cC5b61D89D542EA0a613, 10000 ether);
 
         address[] memory users = new address[](3);
@@ -438,10 +442,10 @@ contract DeployStakingScript is Script, EnvContract {
         // );
 
         // Upgrade DaoRewardManager
-        daoRewardManagerImplementation = new DaoRewardManager();
-        daoRewardManagerProxyAdmin.upgradeAndCall(
-            ITransparentUpgradeableProxy(address(daoRewardManager)), address(daoRewardManagerImplementation), ""
-        );
+        // daoRewardManagerImplementation = new DaoRewardManager();
+        // daoRewardManagerProxyAdmin.upgradeAndCall(
+        //     ITransparentUpgradeableProxy(address(daoRewardManager)), address(daoRewardManagerImplementation), ""
+        // );
 
         // Upgrade EcosystemManager
         // ecosystemManagerImplementation = new EcosystemManager();
@@ -619,14 +623,6 @@ contract DeployStakingScript is Script, EnvContract {
 
         bytes32 implementationSlot = vm.load(proxy, ERC1967Utils.IMPLEMENTATION_SLOT);
         return address(uint160(uint256(implementationSlot)));
-    }
-
-    function getProxyAdminAddress(address proxy) internal view returns (address) {
-        address CHEATCODE_ADDRESS = 0x7109709ECfa91a80626fF3989D68f67F5b1DD12D;
-        Vm vm = Vm(CHEATCODE_ADDRESS);
-
-        bytes32 adminSlot = vm.load(proxy, ERC1967Utils.ADMIN_SLOT);
-        return address(uint160(uint256(adminSlot)));
     }
 
     function _getCurPrivateKey() public returns (uint256) {

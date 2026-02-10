@@ -179,45 +179,47 @@ contract DeployStakingMergeScript is Script, InitContract {
         address OPERATOR = vm.envAddress("OPERATOR");
         address CALLER = vm.envAddress("CALLER");
 
-        chooseMeToken.setOperator(OPERATOR);
-        chooseMeToken.transferOwnership(OWNER);
+        // chooseMeToken.setOperator(OPERATOR);
+        // chooseMeToken.transferOwnership(OWNER);
 
         nodeManager.setManager(MANAGER);
         nodeManager.transferOwnership(OWNER);
+        nodeManagerProxyAdmin.transferOwnership(OWNER);
+
         // nodeManager.setDistributeRewardAddress(CALLER);
 
-        stakingManager.setManager(MANAGER);
-        stakingManager.transferOwnership(OWNER);
+        // stakingManager.setManager(MANAGER);
+        // stakingManager.transferOwnership(OWNER);
         // stakingManager.setStakingOperatorManager(CALLER);
 
-        daoRewardManager.setManager(MANAGER);
-        daoRewardManager.transferOwnership(OWNER);
+        // daoRewardManager.setManager(MANAGER);
+        // daoRewardManager.transferOwnership(OWNER);
 
-        fomoTreasureManager.setManager(MANAGER);
-        fomoTreasureManager.transferOwnership(OWNER);
+        // fomoTreasureManager.setManager(MANAGER);
+        // fomoTreasureManager.transferOwnership(OWNER);
 
-        eventFundingManager.setManager(MANAGER);
-        eventFundingManager.transferOwnership(OWNER);
+        // eventFundingManager.setManager(MANAGER);
+        // eventFundingManager.transferOwnership(OWNER);
 
-        subTokenFundingManager.setOperator(OPERATOR);
-        subTokenFundingManager.setManager(MANAGER);
-        subTokenFundingManager.transferOwnership(OWNER);
+        // subTokenFundingManager.setOperator(OPERATOR);
+        // subTokenFundingManager.setManager(MANAGER);
+        // subTokenFundingManager.transferOwnership(OWNER);
 
-        airdropManager.setManager(MANAGER);
-        airdropManager.transferOwnership(OWNER);
+        // airdropManager.setManager(MANAGER);
+        // airdropManager.transferOwnership(OWNER);
 
-        ecosystemManager.setManager(MANAGER);
-        ecosystemManager.transferOwnership(OWNER);
+        // ecosystemManager.setManager(MANAGER);
+        // ecosystemManager.transferOwnership(OWNER);
 
-        capitalManager.setManager(MANAGER);
-        capitalManager.transferOwnership(OWNER);
+        // capitalManager.setManager(MANAGER);
+        // capitalManager.transferOwnership(OWNER);
 
-        techManager.setManager(MANAGER);
-        techManager.transferOwnership(OWNER);
+        // techManager.setManager(MANAGER);
+        // techManager.transferOwnership(OWNER);
 
-        for (uint256 i = 0; i < 10; i++) {
-            marketManagers[i].setManager(MANAGER);
-            marketManagers[i].transferOwnership(OWNER);
-        }
+        // for (uint256 i = 0; i < 10; i++) {
+        //     marketManagers[i].setManager(MANAGER);
+        //     marketManagers[i].transferOwnership(OWNER);
+        // }
     }
 }

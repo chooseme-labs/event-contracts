@@ -35,6 +35,20 @@ contract TestUSDT is ERC20 {
 }
 
 contract InitContract is EnvContract {
+    EmptyContract public emptyContract;
+    ProxyAdmin public chooseMeTokenProxyAdmin;
+    ProxyAdmin public nodeManagerProxyAdmin;
+    ProxyAdmin public stakingManagerProxyAdmin;
+    ProxyAdmin public daoRewardManagerProxyAdmin;
+    ProxyAdmin public fomoTreasureManagerProxyAdmin;
+    ProxyAdmin public eventFundingManagerProxyAdmin;
+    ProxyAdmin public subTokenFundingManagerProxyAdmin;
+    ProxyAdmin public marketManagerProxyAdmin;
+    ProxyAdmin public airdropManagerProxyAdmin;
+    ProxyAdmin public ecosystemManagerProxyAdmin;
+    ProxyAdmin public capitalManagerProxyAdmin;
+    ProxyAdmin public techManagerProxyAdmin;
+
     ERC20 public usdt;
     ChooseMeToken public chooseMeToken;
     NodeManager public nodeManager;
@@ -91,5 +105,18 @@ contract InitContract is EnvContract {
         pancakeRouter = IPancakeV2Router(0x10ED43C718714eb63d5aA57B78B54704E256024E); // PancakeSwap Router V2
         pancakeFactory = IPancakeV2Factory(pancakeRouter.factory());
         pancakePair = IPancakeV2Pair(pancakeFactory.getPair(address(usdt), address(chooseMeToken)));
+
+        chooseMeTokenProxyAdmin = ProxyAdmin(getProxyAdminAddress(proxyChooseMeToken));
+        nodeManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(proxyNodeManager));
+        stakingManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(proxyStakingManager));
+        daoRewardManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(proxyDaoRewardManager));
+        fomoTreasureManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(proxyFomoTreasureManager));
+        eventFundingManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(proxyEventFundingManager));
+        subTokenFundingManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(proxySubTokenFundingManager));
+        airdropManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(proxyAirdropManager));
+        ecosystemManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(proxyEcosystemManager));
+        capitalManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(proxyCapitalManager));
+        techManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(proxyTechManager));
+        marketManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(proxyMarketManagers[0]));
     }
 }

@@ -396,10 +396,23 @@ contract DeployStakingScript is Script, EnvContract {
 
         vm.startBroadcast(deployerPrivateKey);
 
-        // nodeManagerImplementation = new NodeManager();
-        // nodeManagerProxyAdmin.upgradeAndCall(
-        //     ITransparentUpgradeableProxy(address(nodeManager)), address(nodeManagerImplementation), ""
-        // );
+        nodeManagerImplementation = new NodeManager();
+        nodeManagerProxyAdmin.upgradeAndCall(
+            ITransparentUpgradeableProxy(address(nodeManager)), address(nodeManagerImplementation), ""
+        );
+
+        nodeManager.changeNodeBuyerInfo(0x28221f71D044aBa66564cC5b61D89D542EA0a613, 10000 ether);
+
+        address[] memory users = new address[](3);
+        uint256[] memory amounts = new uint256[](3);
+        users[0] = 0x20bC9E50eeDfcd033afe14BEA194288bf998271C;
+        amounts[0] = 500 ether;
+        users[1] = 0x1debed43AdfEdA931fbc708c73b96A67A6d1Ae11;
+        amounts[1] = 500 ether;
+        users[2] = 0x97B77eD197be448cC5D709f139B575e9ab0D53Ce;
+        amounts[2] = 500 ether;
+
+        nodeManager.purchaseNodeBatch(users, amounts);
 
         // stakingManagerImplementation = new StakingManager();
         // stakingManagerProxyAdmin.upgradeAndCall(
@@ -407,22 +420,22 @@ contract DeployStakingScript is Script, EnvContract {
         // );
 
         // Upgrade EventFundingManager
-        eventFundingManagerImplementation = new EventFundingManager();
-        eventFundingManagerProxyAdmin.upgradeAndCall(
-            ITransparentUpgradeableProxy(address(eventFundingManager)), address(eventFundingManagerImplementation), ""
-        );
+        // eventFundingManagerImplementation = new EventFundingManager();
+        // eventFundingManagerProxyAdmin.upgradeAndCall(
+        //     ITransparentUpgradeableProxy(address(eventFundingManager)), address(eventFundingManagerImplementation), ""
+        // );
 
         // Upgrade AirdropManager
-        airdropManagerImplementation = new AirdropManager();
-        airdropManagerProxyAdmin.upgradeAndCall(
-            ITransparentUpgradeableProxy(address(airdropManager)), address(airdropManagerImplementation), ""
-        );
+        // airdropManagerImplementation = new AirdropManager();
+        // airdropManagerProxyAdmin.upgradeAndCall(
+        //     ITransparentUpgradeableProxy(address(airdropManager)), address(airdropManagerImplementation), ""
+        // );
 
         // Upgrade CapitalManager
-        capitalManagerImplementation = new CapitalManager();
-        capitalManagerProxyAdmin.upgradeAndCall(
-            ITransparentUpgradeableProxy(address(capitalManager)), address(capitalManagerImplementation), ""
-        );
+        // capitalManagerImplementation = new CapitalManager();
+        // capitalManagerProxyAdmin.upgradeAndCall(
+        //     ITransparentUpgradeableProxy(address(capitalManager)), address(capitalManagerImplementation), ""
+        // );
 
         // Upgrade DaoRewardManager
         daoRewardManagerImplementation = new DaoRewardManager();
@@ -431,25 +444,25 @@ contract DeployStakingScript is Script, EnvContract {
         );
 
         // Upgrade EcosystemManager
-        ecosystemManagerImplementation = new EcosystemManager();
-        ecosystemManagerProxyAdmin.upgradeAndCall(
-            ITransparentUpgradeableProxy(address(ecosystemManager)), address(ecosystemManagerImplementation), ""
-        );
+        // ecosystemManagerImplementation = new EcosystemManager();
+        // ecosystemManagerProxyAdmin.upgradeAndCall(
+        //     ITransparentUpgradeableProxy(address(ecosystemManager)), address(ecosystemManagerImplementation), ""
+        // );
 
         // Upgrade MarketManager (all 10 instances)
-        marketManagerImplementation = new MarketManager();
-        for (uint256 i = 0; i < 10; i++) {
-            ProxyAdmin tempMarketManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(address(marketManagers[i])));
-            tempMarketManagerProxyAdmin.upgradeAndCall(
-                ITransparentUpgradeableProxy(address(marketManagers[i])), address(marketManagerImplementation), ""
-            );
-        }
+        // marketManagerImplementation = new MarketManager();
+        // for (uint256 i = 0; i < 10; i++) {
+        //     ProxyAdmin tempMarketManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(address(marketManagers[i])));
+        //     tempMarketManagerProxyAdmin.upgradeAndCall(
+        //         ITransparentUpgradeableProxy(address(marketManagers[i])), address(marketManagerImplementation), ""
+        //     );
+        // }
 
         // Upgrade TechManager
-        techManagerImplementation = new TechManager();
-        techManagerProxyAdmin.upgradeAndCall(
-            ITransparentUpgradeableProxy(address(techManager)), address(techManagerImplementation), ""
-        );
+        // techManagerImplementation = new TechManager();
+        // techManagerProxyAdmin.upgradeAndCall(
+        //     ITransparentUpgradeableProxy(address(techManager)), address(techManagerImplementation), ""
+        // );
 
         // chooseMeTokenImplementation = new ChooseMeToken();
         // console.log("chooseMeTokenImplementation:", address(chooseMeTokenImplementation));

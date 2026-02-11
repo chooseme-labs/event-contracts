@@ -71,12 +71,53 @@ contract EnvContract is Script {
         } catch {}
     }
 
+    function getEventAddresses()
+        internal
+        returns (
+            address proxyAdminFeeVault,
+            address proxyFeeVaultManager,
+            address proxyFundingManager,
+            address proxyFeeVaultPod,
+            address proxyFundingPod,
+            address mockERC20
+        )
+    {
+        string memory json = vm.readFile(getEventDeployPath());
+        try vm.parseJsonAddress(json, ".proxyAdminFeeVault") returns (address _proxyAdminFeeVault) {
+            proxyAdminFeeVault = _proxyAdminFeeVault;
+        } catch {}
+        try vm.parseJsonAddress(json, ".proxyFeeVaultManager") returns (address _proxyFeeVaultManager) {
+            proxyFeeVaultManager = _proxyFeeVaultManager;
+        } catch {}
+        try vm.parseJsonAddress(json, ".proxyFundingManager") returns (address _proxyFundingManager) {
+            proxyFundingManager = _proxyFundingManager;
+        } catch {}
+        try vm.parseJsonAddress(json, ".proxyFeeVaultPod") returns (address _proxyFeeVaultPod) {
+            proxyFeeVaultPod = _proxyFeeVaultPod;
+        } catch {}
+        try vm.parseJsonAddress(json, ".proxyFundingPod") returns (address _proxyFundingPod) {
+            proxyFundingPod = _proxyFundingPod;
+        } catch {}
+        try vm.parseJsonAddress(json, ".mockERC20") returns (address _mockERC20) {
+            mockERC20 = _mockERC20;
+        } catch {}
+    }
+
     function getDeployPath() public view returns (string memory) {
         uint256 mode = vm.envUint("MODE");
         if (mode == 0) {
             return string(abi.encodePacked("./cache/__deployed_addresses_dev", ".json"));
         } else {
             return string(abi.encodePacked("./cache/__deployed_addresses_prod", ".json"));
+        }
+    }
+
+    function getEventDeployPath() public view returns (string memory) {
+        uint256 mode = vm.envUint("MODE");
+        if (mode == 0) {
+            return string(abi.encodePacked("./cache/__deployed_addresses_event_dev", ".json"));
+        } else {
+            return string(abi.encodePacked("./cache/__deployed_addresses_event_prod", ".json"));
         }
     }
 

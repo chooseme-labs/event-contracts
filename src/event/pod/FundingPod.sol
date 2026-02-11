@@ -9,28 +9,22 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 import {FundingPodStorage} from "./FundingPodStorage.sol";
+import {IFeeVaultPod} from "../../interfaces/event/IFeeVaultPod.sol";
 
 contract FundingPod is Initializable, OwnableUpgradeable, PausableUpgradeable, FundingPodStorage {
     using SafeERC20 for IERC20;
 
     // Errors
     error OnlyFundingManager();
-    error OnlyEventPod();
     error TokenNotSupported();
     error InvalidAmount();
     error InsufficientBalance();
-    error InsufficientUserBalance();
     error InvalidAddress();
     error TransferFailed();
 
     // Modifiers
     modifier onlyFundingManager() {
         if (msg.sender != fundingManager) revert OnlyFundingManager();
-        _;
-    }
-
-    modifier onlyEventPod() {
-        if (msg.sender != eventPod) revert OnlyEventPod();
         _;
     }
 
@@ -44,14 +38,13 @@ contract FundingPod is Initializable, OwnableUpgradeable, PausableUpgradeable, F
         _disableInitializers();
     }
 
-    function initialize(address _owner, address _fundingManager, address _eventPod) external initializer {
-        if (_owner == address(0) || _fundingManager == address(0) || _eventPod == address(0)) revert InvalidAddress();
+    function initialize(address _owner, address _fundingManager) external initializer {
+        if (_owner == address(0) || _fundingManager == address(0)) revert InvalidAddress();
 
         __Ownable_init(_owner);
         __Pausable_init();
 
         fundingManager = _fundingManager;
-        eventPod = _eventPod;
     }
 
     /**
@@ -69,97 +62,66 @@ contract FundingPod is Initializable, OwnableUpgradeable, PausableUpgradeable, F
             IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         }
 
-        userTokenBalances[msg.sender][token] += amount;
-        tokenBalances[token] += amount;
-
         emit Deposit(msg.sender, token, amount);
     }
 
     /**
-     * @notice User withdraws tokens from the funding pod
+     * @notice Admin withdraws tokens for a user from the funding pod
+     * @param user The user address to withdraw for
      * @param token The token address to withdraw
      * @param amount The amount to withdraw
      */
-    function withdraw(address token, uint256 amount) external whenNotPaused onlySupportedToken(token) {
-        if (amount == 0) revert InvalidAmount();
-        if (userTokenBalances[msg.sender][token] < amount) revert InsufficientUserBalance();
-
-        userTokenBalances[msg.sender][token] -= amount;
-        tokenBalances[token] -= amount;
-
-        if (token == ETHAddress) {
-            (bool success,) = msg.sender.call{value: amount}("");
-            if (!success) revert TransferFailed();
-        } else {
-            IERC20(token).safeTransfer(msg.sender, amount);
-        }
-
-        emit Withdraw(msg.sender, token, amount);
-    }
-
-    /**
-     * @notice Get user's balance for a specific token
-     * @param user The user address
-     * @param token The token address
-     * @return The user's balance
-     */
-    function getUserBalance(address user, address token) external view returns (uint256) {
-        return userTokenBalances[user][token];
-    }
-
-    /**
-     * @notice Transfer tokens to event contract for betting
-     * @param token The token address to transfer
-     * @param user The user address
-     * @param amount The amount to transfer
-     */
-    function transferToEvent(address token, address user, uint256 amount)
+    function withdrawForUser(address user, address token, uint256 amount)
         external
-        onlyEventPod
+        onlyFundingManager
         whenNotPaused
         onlySupportedToken(token)
     {
         if (amount == 0) revert InvalidAmount();
-        if (tokenBalances[token] < amount) revert InsufficientBalance();
-        if (userTokenBalances[user][token] < amount) revert InsufficientUserBalance();
-
-        tokenBalances[token] -= amount;
-        userTokenBalances[user][token] -= amount;
+        if (user == address(0)) revert InvalidAddress();
+        if (getTokenBalance(token) < amount) revert InsufficientBalance();
 
         if (token == ETHAddress) {
-            (bool success,) = eventPod.call{value: amount}("");
+            (bool success,) = user.call{value: amount}("");
             if (!success) revert TransferFailed();
         } else {
-            IERC20(token).safeTransfer(eventPod, amount);
+            IERC20(token).safeTransfer(user, amount);
         }
 
-        emit TransferToEvent(eventPod, token, user, amount);
+        emit Withdraw(user, token, amount);
     }
 
     /**
-     * @notice Receive tokens from event contract (principal + rewards)
-     * @param token The token address
-     * @param user The user address
-     * @param amount The principal amount returned
-     * TODO How to reduce multiple function calls
+     * @notice Collect win fee from user rewards and transfer to FeeVaultPod
+     * @param token The token address (ETHAddress for native ETH)
+     * @param feeAmount The fee amount to transfer
+     * @param feeType The fee type
      */
-    function receiveFromEvent(address token, address user, uint256 amount)
+    function collectWinFee(address token, uint256 feeAmount, uint8 feeType)
         external
-        payable
-        onlyEventPod
+        onlyFundingManager
         whenNotPaused
         onlySupportedToken(token)
     {
+        if (feeVaultPod == address(0)) revert InvalidAddress();
+        if (feeAmount == 0) revert InvalidAmount();
+        if (getTokenBalance(token) < feeAmount) revert InsufficientBalance();
+
         if (token == ETHAddress) {
-            if (msg.value != amount) revert InvalidAmount();
+            IFeeVaultPod(feeVaultPod).receiveFee{value: feeAmount}(token, feeAmount, feeType, feeAmount);
         } else {
-            IERC20(token).safeTransferFrom(eventPod, address(this), amount);
+            IERC20(token).forceApprove(feeVaultPod, feeAmount);
+            IFeeVaultPod(feeVaultPod).receiveFee(token, feeAmount, feeType, feeAmount);
         }
+    }
 
-        tokenBalances[token] += amount;
-        userTokenBalances[user][token] += amount;
-
-        emit ReceiveFromEvent(eventPod, token, user, amount);
+    /**
+     * @notice Set the FeeVaultPod address
+     * @param _feeVaultPod The new FeeVaultPod address
+     */
+    function setFeeVaultPod(address _feeVaultPod) external onlyFundingManager {
+        if (_feeVaultPod == address(0)) revert InvalidAddress();
+        feeVaultPod = _feeVaultPod;
     }
 
     /**
@@ -177,19 +139,6 @@ contract FundingPod is Initializable, OwnableUpgradeable, PausableUpgradeable, F
      */
     function removeSupportToken(address token) external onlyFundingManager {
         EnumerableSet.remove(supportTokens, token);
-    }
-
-    /**
-     * @notice Set the event pod address
-     * @param _eventPod The new event pod address
-     */
-    function setEventPod(address _eventPod) external onlyFundingManager {
-        if (_eventPod == address(0)) revert InvalidAddress();
-
-        address oldEventPod = eventPod;
-        eventPod = _eventPod;
-
-        emit EventPodUpdated(oldEventPod, _eventPod);
     }
 
     /**

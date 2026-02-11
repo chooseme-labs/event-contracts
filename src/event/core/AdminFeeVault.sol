@@ -7,6 +7,7 @@ import "@openzeppelin-upgrades/contracts/utils/PausableUpgradeable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 import "./AdminFeeVaultStorage.sol";
 
@@ -48,7 +49,7 @@ contract AdminFeeVault is
      * @param feeType The fee type
      * @param feeAmount The original fee amount (for tracking)
      */
-    function receiveFee(address token, uint256 amount, IFeeVaultPod.FeeType feeType, uint256 feeAmount)
+    function receiveFee(address token, uint256 amount, uint8 feeType, uint256 feeAmount)
         external
         payable
         whenNotPaused
@@ -124,7 +125,7 @@ contract AdminFeeVault is
      * @param feeType The fee type
      * @return The fee balance
      */
-    function getFeeBalance(address token, IFeeVaultPod.FeeType feeType) external view returns (uint256) {
+    function getFeeBalance(address token, uint8 feeType) external view returns (uint256) {
         return feeBalances[token][feeType];
     }
 

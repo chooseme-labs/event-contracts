@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
 import "./IFundingPod.sol";
 
 interface IFundingManager {
@@ -13,7 +11,11 @@ interface IFundingManager {
     // Admin functions - manage support tokens
     function addSupportToken(address pod, address token) external;
     function removeSupportToken(address pod, address token) external;
-    function setEventPod(address pod, address _eventPod) external;
+    function setFeeVaultPod(address pod, address _feeVaultPod) external;
+
+    // Authorized caller functions
+    function withdrawForUser(address pod, address user, address token, uint256 amount) external;
+    function collectWinFee(address pod, address token, uint256 feeAmount, uint8 feeType) external;
 
     // Admin functions - manage authorized callers
     function addAuthorizedCaller(address caller) external;

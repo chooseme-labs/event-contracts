@@ -79,7 +79,7 @@ contract FeeVaultPod is Initializable, OwnableUpgradeable, PausableUpgradeable, 
      * @param feeType The fee type
      * @param feeAmount The fee amount
      */
-    function receiveFee(address token, uint256 amount, FeeType feeType, uint256 feeAmount)
+    function receiveFee(address token, uint256 amount, uint8 feeType, uint256 feeAmount)
         external
         payable
         whenNotPaused
@@ -109,7 +109,7 @@ contract FeeVaultPod is Initializable, OwnableUpgradeable, PausableUpgradeable, 
             _transferToAdminFeeVault(token, adminFeeAmount, feeType, feeAmount);
         }
 
-        emit FeeReceived(msg.sender, token, amount, feeType, feeAmount, adminFeeAmount);
+        emit FeeReceived(msg.sender, token, feeType, amount, feeAmount, adminFeeAmount);
     }
 
     /**
@@ -203,7 +203,7 @@ contract FeeVaultPod is Initializable, OwnableUpgradeable, PausableUpgradeable, 
      * @param feeType The fee type
      * @return The fee balance
      */
-    function getFeeBalance(address token, FeeType feeType) external view returns (uint256) {
+    function getFeeBalance(address token, uint8 feeType) external view returns (uint256) {
         return feeBalances[token][feeType];
     }
 
@@ -214,7 +214,7 @@ contract FeeVaultPod is Initializable, OwnableUpgradeable, PausableUpgradeable, 
      * @param feeType The fee type
      * @param originalFeeAmount The original fee amount
      */
-    function _transferToAdminFeeVault(address token, uint256 adminFeeAmount, FeeType feeType, uint256 originalFeeAmount)
+    function _transferToAdminFeeVault(address token, uint256 adminFeeAmount, uint8 feeType, uint256 originalFeeAmount)
         internal
     {
         if (token == ETHAddress) {

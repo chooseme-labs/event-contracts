@@ -11,6 +11,7 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "../common/BaseManager.sol";
 import "./FundingManagerStorage.sol";
 import "../pod/FundingPod.sol";
+import "../../interfaces/event/IFeeVaultPod.sol";
 
 contract FundingManager is BaseManager, FundingManagerStorage {
     using SafeERC20 for IERC20;
@@ -19,6 +20,12 @@ contract FundingManager is BaseManager, FundingManagerStorage {
     // Errors
     error InvalidPod();
     error InvalidAddress();
+    error OnlyAuthorizedCaller();
+
+    modifier onlyAuthorizedCaller() {
+        if (!authorizedCallers.contains(msg.sender)) revert OnlyAuthorizedCaller();
+        _;
+    }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -50,12 +57,42 @@ contract FundingManager is BaseManager, FundingManagerStorage {
     }
 
     /**
-     * @notice Set the event pod address for a funding pod
+     * @notice Set the FeeVaultPod address for a funding pod
      * @param pod The funding pod address
-     * @param _eventPod The event pod address
+     * @param _feeVaultPod The FeeVaultPod address
      */
-    function setEventPod(address pod, address _eventPod) external onlyOwner onlyPod(pod) {
-        FundingPod(payable(pod)).setEventPod(_eventPod);
+    function setFeeVaultPod(address pod, address _feeVaultPod) external onlyOwner onlyPod(pod) {
+        FundingPod(payable(pod)).setFeeVaultPod(_feeVaultPod);
+    }
+
+    /**
+     * @notice Withdraw tokens for a user from a funding pod
+     * @param pod The funding pod address
+     * @param user The user address
+     * @param token The token address
+     * @param amount The amount to withdraw
+     */
+    function withdrawForUser(address pod, address user, address token, uint256 amount)
+        external
+        onlyAuthorizedCaller
+        onlyPod(pod)
+    {
+        FundingPod(payable(pod)).withdrawForUser(user, token, amount);
+    }
+
+    /**
+     * @notice Collect win fee and transfer to FeeVaultPod
+     * @param pod The funding pod address
+     * @param token The token address
+     * @param feeAmount The fee amount
+     * @param feeType The fee type
+     */
+    function collectWinFee(address pod, address token, uint256 feeAmount, uint8 feeType)
+        external
+        onlyAuthorizedCaller
+        onlyPod(pod)
+    {
+        FundingPod(payable(pod)).collectWinFee(token, feeAmount, feeType);
     }
 
     /**

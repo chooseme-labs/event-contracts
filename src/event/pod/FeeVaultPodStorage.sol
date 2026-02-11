@@ -20,7 +20,7 @@ abstract contract FeeVaultPodStorage is IFeeVaultPod {
 
     // Token balances for each fee type
     // token => feeType => balance
-    mapping(address => mapping(FeeType => uint256)) public feeBalances;
+    mapping(address => mapping(uint8 => uint256)) public feeBalances;
 
     // Total token balances
     mapping(address => uint256) public tokenBalances;

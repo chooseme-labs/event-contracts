@@ -8,12 +8,9 @@ abstract contract FundingPodStorage is IFundingPod {
     address public constant ETHAddress = address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
 
     address public fundingManager;
-    address public eventPod;
+    address public feeVaultPod;
 
     EnumerableSet.AddressSet supportTokens;
-
-    mapping(address => uint256) public tokenBalances;
-    mapping(address => mapping(address => uint256)) public userTokenBalances;
 
     uint256[100] private __gap;
 }

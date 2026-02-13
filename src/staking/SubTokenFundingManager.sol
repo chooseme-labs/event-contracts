@@ -82,7 +82,7 @@ contract SubTokenFundingManager is
         uint256 token0Amount = amount / 2;
         uint256 expectedToken1Amount = (token0Amount * price * 50) / 100 / 1e18;
         uint256 token1Amount =
-            SwapHelper.swapV2(router, token0, token1, token0Amount, expectedToken1Amount, address(this));
+            SwapHelper.swapV2(V2_ROUTER, USDT, subToken, token0Amount, expectedToken1Amount, address(this));
         (uint256 liquidityAdded, uint256 amount0Used, uint256 amount1Used) =
             SwapHelper.addLiquidityV2(V2_ROUTER, USDT, subToken, token0Amount, token1Amount, address(this));
 

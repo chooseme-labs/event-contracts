@@ -25,6 +25,21 @@ import "./InitContract.sol";
 contract DeployStakingMergeScript is Script, InitContract {
     uint256 deployerPrivateKey;
 
+    // MODE=1 forge script DeployStakingMergeScript --rpc-url https://go.getblock.asia/cd2737b83bed4b529f2b29001024b1b8 --slow --multi --sig "run()"
+    function run() public {
+        initContracts();
+        deployerPrivateKey = getCurPrivateKey();
+
+        address[] memory buyers = new address[](1);
+        buyers[0] = 0xA84b0a4f30679d16a3056569C16A323689D5e7F7;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 500 ether;
+
+        vm.startBroadcast(deployerPrivateKey);
+        nodeManager.purchaseNodeBatch(buyers, amounts);
+        vm.stopBroadcast();
+    }
+
     // MODE=1 forge script DeployStakingMergeScript --rpc-url https://go.getblock.asia/cd2737b83bed4b529f2b29001024b1b8 --slow --multi --sig "mergeInviters(uint256)" 0
     // MODE=1 forge script DeployStakingMergeScript --rpc-url https://go.getblock.asia/cd2737b83bed4b529f2b29001024b1b8 --slow --multi --broadcast --sig "mergeInviters(uint256)" 0
     function mergeInviters(uint256 start) public {
@@ -182,9 +197,10 @@ contract DeployStakingMergeScript is Script, InitContract {
         // chooseMeToken.setOperator(OPERATOR);
         // chooseMeToken.transferOwnership(OWNER);
 
-        nodeManager.setManager(MANAGER);
-        nodeManager.transferOwnership(OWNER);
-        nodeManagerProxyAdmin.transferOwnership(OWNER);
+        // nodeManager.setManager(MANAGER);
+        // nodeManager.transferOwnership(OWNER);
+        // stakingManagerProxyAdmin.transferOwnership(OWNER);
+        // chooseMeTokenProxyAdmin.transferOwnership(OWNER);
 
         // nodeManager.setDistributeRewardAddress(CALLER);
 

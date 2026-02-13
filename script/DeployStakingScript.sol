@@ -396,32 +396,10 @@ contract DeployStakingScript is Script, EnvContract {
 
         vm.startBroadcast(deployerPrivateKey);
 
-        nodeManagerImplementation = new NodeManager();
-        nodeManagerProxyAdmin.upgradeAndCall(
-            ITransparentUpgradeableProxy(address(nodeManager)), address(nodeManagerImplementation), ""
+        stakingManagerImplementation = new StakingManager();
+        stakingManagerProxyAdmin.upgradeAndCall(
+            ITransparentUpgradeableProxy(address(stakingManager)), address(stakingManagerImplementation), ""
         );
-
-        console.log("NodeManager upgraded", nodeManager.manager());
-
-        nodeManager.setManager(0xFF4068902594ad265D7181313eF664c6F73bb63d);
-
-        nodeManager.changeNodeBuyerInfo(0x28221f71D044aBa66564cC5b61D89D542EA0a613, 10000 ether);
-
-        address[] memory users = new address[](3);
-        uint256[] memory amounts = new uint256[](3);
-        users[0] = 0x20bC9E50eeDfcd033afe14BEA194288bf998271C;
-        amounts[0] = 500 ether;
-        users[1] = 0x1debed43AdfEdA931fbc708c73b96A67A6d1Ae11;
-        amounts[1] = 500 ether;
-        users[2] = 0x97B77eD197be448cC5D709f139B575e9ab0D53Ce;
-        amounts[2] = 500 ether;
-
-        nodeManager.purchaseNodeBatch(users, amounts);
-
-        // stakingManagerImplementation = new StakingManager();
-        // stakingManagerProxyAdmin.upgradeAndCall(
-        //     ITransparentUpgradeableProxy(address(stakingManager)), address(stakingManagerImplementation), ""
-        // );
 
         // Upgrade EventFundingManager
         // eventFundingManagerImplementation = new EventFundingManager();
@@ -470,9 +448,9 @@ contract DeployStakingScript is Script, EnvContract {
 
         // chooseMeTokenImplementation = new ChooseMeToken();
         // console.log("chooseMeTokenImplementation:", address(chooseMeTokenImplementation));
-        // chooseMeTokenProxyAdmin.upgradeAndCall(
-        //     ITransparentUpgradeableProxy(address(chooseMeToken)), 0x461B9D6D2054Fbe87573b3EEF3d3EB0fCdF02d21, ""
-        // );
+        chooseMeTokenProxyAdmin.upgradeAndCall(
+            ITransparentUpgradeableProxy(address(chooseMeToken)), 0x1ce39ED54cEa4b1e72Af5f39353244Cf7c7b4388, ""
+        );
 
         vm.stopBroadcast();
     }

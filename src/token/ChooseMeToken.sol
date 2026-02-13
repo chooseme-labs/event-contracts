@@ -106,7 +106,8 @@ contract ChooseMeToken is
 
         uint256 finallyValue = value;
 
-        (bool isBuy, bool isSell,,,,) = getTradeType(from, to, value, address(this));
+        (bool isBuy, bool isSell, bool isAddLiquidity, bool isRemoveLiquidity,,) =
+            getTradeType(from, to, value, address(this));
 
         if (!isStakingManager(to) && (isBuy && !isOpenBuy)) {
             revert("ChooseMeToken: Buying is not enabled yet");
@@ -116,7 +117,7 @@ contract ChooseMeToken is
             revert("ChooseMeToken: Selling is not enabled yet");
         }
 
-        (uint256 toThisTrade, uint256 toDaoTrade) = getTradeFee(from, to, value, isBuy, isSell);
+        (uint256 toThisTrade, uint256 toDaoTrade) = getTradeFee(value, isBuy, isSell, isAddLiquidity, isRemoveLiquidity);
         finallyValue = finallyValue - (toThisTrade + toDaoTrade);
 
         (uint256 toThisProfit, uint256 toDaoProfit) = getProfitFee(from, to, value, finallyValue, isBuy, isSell);
@@ -174,7 +175,7 @@ contract ChooseMeToken is
         toDaoAmount = profitNodeFee + profitClusterFee;
     }
 
-    function getTradeFee(address from, address to, uint256 value, bool isBuy, bool isSell)
+    function getTradeFee(uint256 value, bool isBuy, bool isSell, bool isAddLiquidity, bool isRemoveLiquidity)
         internal
         returns (uint256 toThisAmount, uint256 toDaoAmount)
     {
@@ -185,7 +186,7 @@ contract ChooseMeToken is
         uint256 swapSubFee;
 
         // trade slippage fee only for buy/sell
-        if (isBuy || isSell) {
+        if (isBuy || isSell || isAddLiquidity || isRemoveLiquidity) {
             uint256 every = value / 10000;
 
             swapNodeFee = every * tradeFee.nodeFee;

@@ -34,32 +34,24 @@ library SwapHelper {
      * @param router PancakeSwap V2 router address
      * @param token0 First token address
      * @param token1 Second token address
-     * @param amount Total amount of token0 to use (50% will be swapped to token1)
+     * @param amount0 Total amount of token0 to use
+     * @param amount1 Total amount of token1 to use
      * @param to Address to receive LP tokens
      * @return liquidityAdded Amount of LP tokens minted
      * @return amount0Used Amount of token0 used
      * @return amount1Used Amount of token1 used
      */
-    function addLiquidityV2(address router, address token0, address token1, uint256 amount, uint256 price, address to)
-        internal
-        returns (uint256 liquidityAdded, uint256 amount0Used, uint256 amount1Used)
-    {
-        uint256 token0Amount = amount / 2;
-        uint256 expectedToken1Amount = (token0Amount * price * 50) / 100 / 1e18;
-        uint256 token1Amount =
-            SwapHelper.swapV2(router, token0, token1, token0Amount, expectedToken1Amount, address(this));
-        IERC20(token0).approve(router, token0Amount);
-        IERC20(token1).approve(router, token1Amount);
+    function addLiquidityV2(
+        address router,
+        address token0,
+        address token1,
+        uint256 amount0,
+        uint256 amount1,
+        address to
+    ) internal returns (uint256 liquidityAdded, uint256 amount0Used, uint256 amount1Used) {
+        IERC20(token0).approve(router, amount0);
+        IERC20(token1).approve(router, amount1);
         (amount0Used, amount1Used, liquidityAdded) = IPancakeRouter02(router)
-            .addLiquidity(
-                token0,
-                token1,
-                token0Amount,
-                token1Amount,
-                token0Amount * 50 / 100,
-                token1Amount * 50 / 100,
-                to,
-                block.timestamp
-            );
+            .addLiquidity(token0, token1, amount0, amount1, amount0 * 80 / 100, amount1 * 80 / 100, to, block.timestamp);
     }
 }

@@ -130,7 +130,7 @@ interface IStakingManager {
     ) external;
     function createLiquidityProviderRewardBatch(BatchReward[] memory batchRewards) external;
 
-    function liquidityProviderClaimReward(uint256 amount) external;
+    function liquidityProviderClaimReward(uint256 round, uint256 amount) external;
 
     function addLiquidity(uint256 amount, uint256 price, uint256 subTokenAmount) external;
 

@@ -195,8 +195,8 @@ contract StakingManager is
      * @dev Liquidity provider claim reward - User side
      * @notice 20% of rewards will be forcibly withheld and converted to USDT for deposit into event prediction market
      */
-    function liquidityProviderClaimReward(uint256 round) external {
-        _liquidityProviderClaimReward(msg.sender, round);
+    function liquidityProviderClaimReward(uint256 round, uint256 amount) external {
+        _liquidityProviderClaimReward(msg.sender, round, amount);
     }
 
     function _liquidityProviderClaimRewardBatch() external {
@@ -204,7 +204,9 @@ contract StakingManager is
         uint256 round = lpStakingRound[user];
         for (uint256 i = 0; i < round; i++) {
             if (liquidities[user][i].rewardAmount > liquidities[user][i].claimedAmount) {
-                _liquidityProviderClaimReward(user, i);
+                _liquidityProviderClaimReward(
+                    user, i, liquidities[user][i].rewardAmount - liquidities[user][i].claimedAmount
+                );
             }
         }
     }
@@ -287,10 +289,9 @@ contract StakingManager is
      * @dev Liquidity provider claim reward - User side
      * @notice 20% of rewards will be forcibly withheld and converted to USDT for deposit into event prediction market
      */
-    function _liquidityProviderClaimReward(address user, uint256 round) internal {
+    function _liquidityProviderClaimReward(address user, uint256 round, uint256 amount) internal {
         StakingInfo storage lpInfo = liquidities[user][round];
-        uint256 amount = lpInfo.rewardAmount - lpInfo.claimedAmount;
-        require(amount > 0, "reward insufficient");
+        require(amount <= lpInfo.rewardAmount - lpInfo.claimedAmount, "reward insufficient");
 
         lpInfo.claimedAmount += amount;
 

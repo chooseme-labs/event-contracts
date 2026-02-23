@@ -373,7 +373,7 @@ contract IntegratedTestStakingScript is Script {
         vm.startBroadcast(lp1PrivateKey);
         uint256 claimAmount = 5 * 10 ** 6;
 
-        stakingManager.liquidityProviderClaimReward(claimAmount);
+        stakingManager.liquidityProviderClaimReward(0, claimAmount);
         console.log("LP1 claimed reward:", claimAmount / 10 ** 6, "CMT");
         uint256 lpBalance = chooseMeToken.balanceOf(liquidityProvider1);
         console.log("LP1 CMT balance after claim:", lpBalance / 10 ** 6);

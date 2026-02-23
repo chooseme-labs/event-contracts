@@ -693,7 +693,7 @@ contract TestStakingManager is Test {
         vm.expectEmit(true, false, false, true);
         emit lpClaimReward(user1, 0, 80 * 10 ** 18, 20 * 10 ** 18); // 80% withdraw, 20% to event
 
-        stakingManager.liquidityProviderClaimReward(0); // Claim from round 0
+        stakingManager.liquidityProviderClaimReward(0, 1); // Claim from round 0
         vm.stopPrank();
 
         uint256 balanceAfter = cmt.balanceOf(user1);
@@ -714,7 +714,7 @@ contract TestStakingManager is Test {
         stakingManager.liquidityProviderDeposit(T1_STAKING);
 
         vm.expectRevert("reward insufficient");
-        stakingManager.liquidityProviderClaimReward(0);
+        stakingManager.liquidityProviderClaimReward(0, 1);
         vm.stopPrank();
     }
 
@@ -734,10 +734,10 @@ contract TestStakingManager is Test {
         vm.startPrank(user1);
         // Since liquidityProviderClaimReward now takes round parameter and claims all available rewards,
         // we need to claim once, then try to claim again (which should fail)
-        stakingManager.liquidityProviderClaimReward(0); // First claim - should succeed
+        stakingManager.liquidityProviderClaimReward(0, 1); // First claim - should succeed
 
         vm.expectRevert("reward insufficient");
-        stakingManager.liquidityProviderClaimReward(0); // Second claim - should fail
+        stakingManager.liquidityProviderClaimReward(0, 1); // Second claim - should fail
         vm.stopPrank();
     }
 
@@ -756,7 +756,7 @@ contract TestStakingManager is Test {
 
         vm.startPrank(user1);
         // Claim all rewards at once (the function now claims everything)
-        stakingManager.liquidityProviderClaimReward(0);
+        stakingManager.liquidityProviderClaimReward(0, 1);
         vm.stopPrank();
 
         (,,,,, uint256 claimedReward1) = stakingManager.liquidities(user1, 0);

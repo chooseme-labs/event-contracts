@@ -435,7 +435,7 @@ contract BroadcastStakingScript is InitContract {
 
         vm.startBroadcast(userPrivateKey);
 
-        stakingManager.liquidityProviderClaimReward(claimAmount);
+        stakingManager.liquidityProviderClaimReward(0, claimAmount);
         console.log("Liquidity provider reward claimed successfully");
 
         vm.stopBroadcast();

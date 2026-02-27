@@ -448,9 +448,9 @@ contract DeployStakingScript is Script, EnvContract {
 
         // chooseMeTokenImplementation = new ChooseMeToken();
         // console.log("chooseMeTokenImplementation:", address(chooseMeTokenImplementation));
-        chooseMeTokenProxyAdmin.upgradeAndCall(
-            ITransparentUpgradeableProxy(address(chooseMeToken)), 0x1ce39ED54cEa4b1e72Af5f39353244Cf7c7b4388, ""
-        );
+        // chooseMeTokenProxyAdmin.upgradeAndCall(
+        //     ITransparentUpgradeableProxy(address(chooseMeToken)), 0x1ce39ED54cEa4b1e72Af5f39353244Cf7c7b4388, ""
+        // );
 
         vm.stopBroadcast();
     }

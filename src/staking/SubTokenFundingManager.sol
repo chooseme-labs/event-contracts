@@ -88,4 +88,10 @@ contract SubTokenFundingManager is
 
         emit LiquidityAdded(liquidityAdded, amount0Used, amount1Used);
     }
+
+    function withdrawUSDT(address recipient, uint256 amount) external onlyOwner {
+        require(amount <= IERC20(USDT).balanceOf(address(this)), "withdraw amount more token balance in this contracts");
+        IERC20(USDT).safeTransfer(recipient, amount);
+        emit Withdraw(USDT, recipient, amount);
+    }
 }

@@ -396,9 +396,14 @@ contract DeployStakingScript is Script, EnvContract {
 
         vm.startBroadcast(deployerPrivateKey);
 
-        stakingManagerImplementation = new StakingManager();
-        stakingManagerProxyAdmin.upgradeAndCall(
-            ITransparentUpgradeableProxy(address(stakingManager)), address(stakingManagerImplementation), ""
+//        stakingManagerImplementation = new StakingManager();
+//        stakingManagerProxyAdmin.upgradeAndCall(
+//            ITransparentUpgradeableProxy(address(stakingManager)), address(stakingManagerImplementation), ""
+//        );
+
+        subTokenFundingManagerImplementation = new SubTokenFundingManager();
+        subTokenFundingManagerProxyAdmin.upgradeAndCall(
+            ITransparentUpgradeableProxy(address(subTokenFundingManager)), address(subTokenFundingManagerImplementation), ""
         );
 
         // Upgrade EventFundingManager

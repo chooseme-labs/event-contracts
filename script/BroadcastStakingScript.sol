@@ -365,7 +365,7 @@ contract BroadcastStakingScript is InitContract {
         uint256 usdtBalance = usdt.balanceOf(address(stakingManager));
         require(usdtBalance >= liquidityAmount, "Insufficient USDT balance for liquidity");
 
-        stakingManager.addLiquidity(liquidityAmount, 1e18, 0);
+        stakingManager.addLiquidityAndBurn(liquidityAmount, 1e18, 0, 0);
         console.log("Liquidity added successfully");
 
         vm.stopBroadcast();

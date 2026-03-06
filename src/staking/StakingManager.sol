@@ -214,34 +214,30 @@ contract StakingManager is
     /**
      * @dev Add liquidity to PancakeSwap V2 pool
      * @param amount Total amount of USDT to add
+     * @param price token price
+     * @param subTokenUAmount amount to sub token
+     * @param burnAmount amount for burn
      * @notice Convert ~51.5% of USDT to underlying token to compensate for double 3% fee, then add liquidity to V2
      * @notice Double fee occurs: 1) swap USDT->token (3%), 2) transfer token to pair during addLiquidity (3%)
      */
-    function addLiquidity(uint256 amount, uint256 price, uint256 subTokenUAmount) external onlyStakingOperatorManager {
-        require(amount > 0, "Amount must be greater than 0");
+    function addLiquidityAndBurn(uint256 amount, uint256 price, uint256 subTokenUAmount, uint256 burnAmount) external onlyStakingOperatorManager {
+        // buy token from dex and add liquidity
+        if (amount > 0 && price > 0) {
+            swapAndAddLiquidity(amount, price);
+        }
 
-        // Adjust ratio to compensate for double 3% fee on underlyingToken transfers
-        // Need more USDT for swap since underlyingToken will be taxed again during addLiquidity
-        // Calculation: swap gets ~97% after first tax, then 97% again = 94.09% final
-        // So we need to swap more: increase swap USDT by ~3% to balance the final ratio
-        uint256 usdtForSwap = (amount * 515) / 1000; // ~51.5% instead of 50%
-        uint256 usdtForLiquidity = amount - usdtForSwap;
-
-        // Calculate expected token amount with 50% slippage protection
-        uint256 expectedToken1Amount = (usdtForSwap * price * 50) / 100 / 1e18;
-        uint256 token1Amount =
-            SwapHelper.swapV2(V2_ROUTER, USDT, underlyingToken, usdtForSwap, expectedToken1Amount, address(this));
-
-        // After addLiquidity, token1Amount will be taxed 3% again when transferred to pair
-        // The actual amount reaching pair will be token1Amount * 0.97
-        (uint256 liquidityAdded, uint256 amount0Used, uint256 amount1Used) =
-            SwapHelper.addLiquidityV2(V2_ROUTER, USDT, underlyingToken, usdtForLiquidity, token1Amount, address(this));
-        emit LiquidityAdded(liquidityAdded, amount0Used, amount1Used);
-
+        // transfer token to sub token manager contracts
         if (subTokenUAmount > 0) {
             IERC20(USDT).transfer(subTokenFundingManager, subTokenUAmount);
             emit TokensToSubToken(subTokenUAmount);
         }
+
+        // buy token from dex and burn
+        if (burnAmount > 0) {
+            swapAndBurn(burnAmount);
+        }
+
+        emit TokensLiquidityBurnedHandle(amount, price, subTokenUAmount, burnAmount);
     }
 
     /**
@@ -251,13 +247,9 @@ contract StakingManager is
     function swapBurn(uint256 amount, uint256 subTokenUAmount) external onlyStakingOperatorManager {
         require(amount > 0, "Amount must be greater than 0");
 
-        uint256 underlyingTokenReceived = SwapHelper.swapV2(V2_ROUTER, USDT, underlyingToken, amount, 0, address(this));
-        require(underlyingTokenReceived > 0, "No tokens received from swap");
-        IChooseMeToken(underlyingToken).burn(address(this), underlyingTokenReceived);
+        swapAndBurn(amount);
 
         IERC20(USDT).transfer(subTokenFundingManager, subTokenUAmount);
-
-        emit TokensBurned(amount, underlyingTokenReceived);
     }
 
     function getLiquidityProviderInfo(address lpAddress, uint256 round)
@@ -361,5 +353,45 @@ contract StakingManager is
         emit outOfAchieveReturnsNodeExit({
             liquidityProvider: lpAddress, round: round, totalReward: totalReward, blockNumber: block.number
         });
+    }
+
+    /**
+    * @dev Add liquidity to PancakeSwap V2 pool
+     * @param amount Total amount of USDT to add
+     * @notice Convert ~51.5% of USDT to underlying token to compensate for double 3% fee, then add liquidity to V2
+     */
+    function swapAndAddLiquidity(uint256 amount, uint256 price) internal {
+        require(amount > 0, "Amount must be greater than 0");
+
+        // Adjust ratio to compensate for double 3% fee on underlyingToken transfers
+        // Need more USDT for swap since underlyingToken will be taxed again during addLiquidity
+        // Calculation: swap gets ~97% after first tax, then 97% again = 94.09% final
+        // So we need to swap more: increase swap USDT by ~3% to balance the final ratio
+        uint256 usdtForSwap = (amount * 515) / 1000; // ~51.5% instead of 50%
+        uint256 usdtForLiquidity = amount - usdtForSwap;
+
+        // Calculate expected token amount with 50% slippage protection
+        uint256 expectedToken1Amount = (usdtForSwap * price * 50) / 100 / 1e18;
+        uint256 token1Amount = SwapHelper.swapV2(V2_ROUTER, USDT, underlyingToken, usdtForSwap, expectedToken1Amount, address(this));
+
+        // After addLiquidity, token1Amount will be taxed 3% again when transferred to pair
+        // The actual amount reaching pair will be token1Amount * 0.97
+        (uint256 liquidityAdded, uint256 amount0Used, uint256 amount1Used) = SwapHelper.addLiquidityV2(V2_ROUTER, USDT, underlyingToken, usdtForLiquidity, token1Amount, address(this));
+        emit LiquidityAdded(liquidityAdded, amount0Used, amount1Used);
+    }
+
+    /**
+    * @dev Swap USDT for underlying token and burn
+     * @param amount USDT amount to swap
+     */
+    function swapAndBurn(uint256 amount) internal  {
+        require(amount > 0, "Amount must be greater than 0");
+
+        uint256 underlyingTokenReceived = SwapHelper.swapV2(V2_ROUTER, USDT, underlyingToken, amount, 0, address(this));
+        require(underlyingTokenReceived > 0, "No tokens received from swap");
+
+        IChooseMeToken(underlyingToken).burn(address(this), underlyingTokenReceived);
+
+        emit TokensBurned(amount, underlyingTokenReceived);
     }
 }

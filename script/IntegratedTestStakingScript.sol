@@ -334,7 +334,7 @@ contract IntegratedTestStakingScript is Script {
         if (stakingManagerUsdtBalance >= liquidityAmount) {
             uint256 deployerPrivateKey = vm.envUint("DEV_PRIVATE_KEY");
             vm.startBroadcast(deployerPrivateKey);
-            stakingManager.addLiquidity(liquidityAmount, 1e18, 0);
+            stakingManager.addLiquidityAndBurn(liquidityAmount, 1e18, 0, 0);
             console.log("Successfully added liquidity via StakingManager");
             console.log("Liquidity amount:", liquidityAmount / 10 ** 18, "USDT");
             vm.stopBroadcast();

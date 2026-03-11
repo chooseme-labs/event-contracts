@@ -290,11 +290,9 @@ contract StakingManager is
         uint256 toEventPredictionAmount = (amount * 20) / 100;
         if (toEventPredictionAmount > 0) {
             daoRewardManager.withdraw(address(this), toEventPredictionAmount);
-
-            uint256 usdtAmount =
-                SwapHelper.swapV2(V2_ROUTER, underlyingToken, USDT, toEventPredictionAmount, 0, address(this));
-            IERC20(USDT).approve(address(eventFundingManager), usdtAmount);
-            eventFundingManager.depositUsdt(usdtAmount);
+            // uint256 usdtAmount = SwapHelper.swapV2(V2_ROUTER, underlyingToken, USDT, toEventPredictionAmount, 0, address(this));
+            IERC20(underlyingToken).approve(address(eventFundingManager), toEventPredictionAmount);
+            eventFundingManager.depositToken(underlyingToken, toEventPredictionAmount);
         }
 
         uint256 canWithdrawAmount = amount - toEventPredictionAmount;

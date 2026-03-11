@@ -85,10 +85,10 @@ contract MockEventFundingManager is IEventFundingManager {
         usdt = _usdt;
     }
 
-    function depositUsdt(uint256 amount) external override returns (bool) {
-        IERC20(usdt).transferFrom(msg.sender, address(this), amount);
+    function depositToken(address tokenAddress, uint256 amount) external returns (bool) {
+        IERC20(tokenAddress).transferFrom(msg.sender, address(this), amount);
         totalDeposited += amount;
-        emit DepositUsdt(usdt, msg.sender, amount);
+        emit DepositToken(tokenAddress, msg.sender, amount);
         return true;
     }
 

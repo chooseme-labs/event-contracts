@@ -52,10 +52,10 @@ contract EventFundingManager is Initializable, OwnableUpgradeable, PausableUpgra
      * @param amount Amount of USDT to deposit
      * @return Whether the operation was successful
      */
-    function depositUsdt(uint256 amount) external whenNotPaused returns (bool) {
-        IERC20(usdtTokenAddress).safeTransferFrom(msg.sender, address(this), amount);
-        fundingBalanceForBetting[msg.sender][usdtTokenAddress] += amount;
-        emit DepositUsdt(usdtTokenAddress, msg.sender, amount);
+    function depositToken(address tokenAddress, uint256 amount) external whenNotPaused returns (bool) {
+        IERC20(tokenAddress).safeTransferFrom(msg.sender, address(this), amount);
+        fundingBalanceForBetting[msg.sender][tokenAddress] += amount;
+        emit DepositToken(tokenAddress, msg.sender, amount);
         return true;
     }
 

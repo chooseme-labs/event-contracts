@@ -60,6 +60,17 @@ contract EventFundingManager is Initializable, OwnableUpgradeable, PausableUpgra
     }
 
     /**
+    * @dev Withdraw Token from event funding pool
+     * @param amount Amount of Token to withdraw
+     * @return Whether the operation was successful
+     */
+    function withdrawToken(address tokenAddress, address recipient, uint256 amount) external onlyManager {
+        require(amount <= IERC20(tokenAddress).balanceOf(address(this)), "withdraw amount more token balance in this contracts");
+        IERC20(tokenAddress).safeTransfer(recipient, amount);
+        emit Withdraw(tokenAddress, recipient, amount);
+    }
+
+    /**
      * @dev Use funds to bet on event
      * @param eventPod Event pool address
      * @param user User address

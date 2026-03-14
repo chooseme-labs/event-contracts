@@ -143,29 +143,11 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
         require(recipient != address(0), "NodeManager.distributeRewards: zero address");
         require(tokenAmount > 0 && usdtAmount > 0, "NodeManager.distributeRewards: amount must more than zero");
         require(incomeType <= uint256(NodeIncomeType.NodeIncomeCategorySameLevelFee), "Invalid income type");
-        require(!rewardClaimInfo[recipient].isOutOf, "Recipient is out of rewards");
-
-        uint256 usdtRewardAmount = usdtAmount;
-        uint256 outAmount = nodeAmounts[nodeBuyerInfo[recipient].amount] * 3;
-        if (rewardClaimInfo[recipient].totalUReward + usdtRewardAmount > outAmount) {
-            usdtRewardAmount = outAmount - rewardClaimInfo[recipient].totalUReward;
+        if (incomeType == uint256(NodeIncomeType.NodeIncomeCategoryNetworkTransactionFee)) {
+            distributeRewardNoExit(recipient, tokenAmount, usdtAmount, incomeType);
+        } else {
+            distributeRewardExit(recipient, tokenAmount, usdtAmount, incomeType);
         }
-
-        rewardClaimInfo[recipient].totalUReward += usdtRewardAmount;
-        tokenAmount = tokenAmount * usdtRewardAmount / usdtAmount;
-
-        rewardClaimInfo[recipient].totalReward += tokenAmount;
-        nodeRewardTypeInfo[recipient][incomeType].amount += tokenAmount;
-
-        if (rewardClaimInfo[recipient].totalUReward >= outAmount) {
-            rewardClaimInfo[recipient].isOutOf = true;
-            emit outOfAchieveReturnsNodeExit({
-                recipient: recipient, totalReward: rewardClaimInfo[recipient].totalReward, blockNumber: block.number
-            });
-        }
-        emit DistributeNodeRewards({
-            recipient: recipient, tokenAmount: tokenAmount, usdtAmount: usdtRewardAmount, incomeType: incomeType
-        });
     }
 
     function distributeRewardBatch(BatchReward[] memory batchRewards) public onlyDistributeRewardManager {
@@ -263,5 +245,42 @@ contract NodeManager is Initializable, OwnableUpgradeable, PausableUpgradeable, 
         uint8 buyNodeType = matchNodeTypeByAmount(amount);
         nodeBuyerInfo[buyer].nodeType = buyNodeType;
         nodeBuyerInfo[buyer].amount = amount;
+    }
+
+    function distributeRewardNoExit(address recipient, uint256 tokenAmount, uint256 usdtAmount, uint8 incomeType) internal {
+        rewardClaimInfo[recipient].totalUReward += usdtAmount;
+
+        rewardClaimInfo[recipient].totalReward += tokenAmount;
+        nodeRewardTypeInfo[recipient][incomeType].amount += tokenAmount;
+
+        emit DistributeNodeRewards({
+            recipient: recipient, tokenAmount: tokenAmount, usdtAmount: usdtAmount, incomeType: incomeType
+        });
+    }
+
+    function distributeRewardExit(address recipient, uint256 tokenAmount, uint256 usdtAmount, uint8 incomeType) internal {
+        require(!rewardClaimInfo[recipient].isOutOf, "Recipient is out of rewards");
+
+        uint256 usdtRewardAmount = usdtAmount;
+        uint256 outAmount = nodeAmounts[nodeBuyerInfo[recipient].amount] * 3;
+        if (rewardClaimInfo[recipient].totalUReward + usdtRewardAmount > outAmount) {
+            usdtRewardAmount = outAmount - rewardClaimInfo[recipient].totalUReward;
+        }
+
+        rewardClaimInfo[recipient].totalUReward += usdtRewardAmount;
+        tokenAmount = tokenAmount * usdtRewardAmount / usdtAmount;
+
+        rewardClaimInfo[recipient].totalReward += tokenAmount;
+        nodeRewardTypeInfo[recipient][incomeType].amount += tokenAmount;
+
+        if (rewardClaimInfo[recipient].totalUReward >= outAmount) {
+            rewardClaimInfo[recipient].isOutOf = true;
+            emit outOfAchieveReturnsNodeExit({
+                recipient: recipient, totalReward: rewardClaimInfo[recipient].totalReward, blockNumber: block.number
+            });
+        }
+        emit DistributeNodeRewards({
+            recipient: recipient, tokenAmount: tokenAmount, usdtAmount: usdtRewardAmount, incomeType: incomeType
+        });
     }
 }

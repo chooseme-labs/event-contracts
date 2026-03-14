@@ -9,7 +9,7 @@ interface INodeManager {
 
     enum NodeIncomeType {
         NodeIncomeCategoryNodeFee,
-        NodeIncomeCategoryNetworkTransactionFee,
+        NodeIncomeCategoryNetworkTransactionFee,  // 不受 3 倍出局影响
         NodeIncomeCategorySecondaryMarketFee,
         NodeIncomeCategorySubcoinFee,
         NodeIncomeCategoryDirectFee,

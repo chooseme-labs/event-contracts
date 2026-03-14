@@ -396,21 +396,26 @@ contract DeployStakingScript is Script, EnvContract {
 
         vm.startBroadcast(deployerPrivateKey);
 
-        stakingManagerImplementation = new StakingManager();
-        stakingManagerProxyAdmin.upgradeAndCall(
-            ITransparentUpgradeableProxy(address(stakingManager)), address(stakingManagerImplementation), ""
-        );
+//        stakingManagerImplementation = new StakingManager();
+//        stakingManagerProxyAdmin.upgradeAndCall(
+//            ITransparentUpgradeableProxy(address(stakingManager)), address(stakingManagerImplementation), ""
+//        );
+
+//        nodeManagerImplementation = new NodeManager();
+//        nodeManagerProxyAdmin.upgradeAndCall(
+//            ITransparentUpgradeableProxy(address(nodeManager)), address(nodeManagerImplementation), ""
+//        );
 
 //        subTokenFundingManagerImplementation = new SubTokenFundingManager();
 //        subTokenFundingManagerProxyAdmin.upgradeAndCall(
 //            ITransparentUpgradeableProxy(address(subTokenFundingManager)), address(subTokenFundingManagerImplementation), ""
 //        );
 
-        // Upgrade EventFundingManager
-        // eventFundingManagerImplementation = new EventFundingManager();
-        // eventFundingManagerProxyAdmin.upgradeAndCall(
-        //     ITransparentUpgradeableProxy(address(eventFundingManager)), address(eventFundingManagerImplementation), ""
-        // );
+         // Upgrade EventFundingManager
+         eventFundingManagerImplementation = new EventFundingManager();
+         eventFundingManagerProxyAdmin.upgradeAndCall(
+             ITransparentUpgradeableProxy(address(eventFundingManager)), address(eventFundingManagerImplementation), ""
+         );
 
         // Upgrade AirdropManager
         // airdropManagerImplementation = new AirdropManager();

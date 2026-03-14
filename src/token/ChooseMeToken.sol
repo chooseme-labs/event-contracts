@@ -411,6 +411,10 @@ contract ChooseMeToken is
         emit Burn(_amount, totalSupply());
     }
 
+    function transferBurn(uint256 _amount) external onlyStakingManager {
+        transfer(address(0), _amount);
+    }
+
     /**
      * @dev Get current total supply of CMT tokens
      * @return Current total supply

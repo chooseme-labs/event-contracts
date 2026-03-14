@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 interface IChooseMeToken {
     function burn(address user, uint256 _amount) external;
+    function transferBurn(uint256 _amount) external;
     function quote(uint256 amount) external view returns (uint256);
 
     event Burn(uint256 _burnAmount, uint256 _totalSupply);

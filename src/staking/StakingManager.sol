@@ -125,6 +125,36 @@ contract StakingManager is
     }
 
     /**
+     * @dev Manually update liquidity provider staking category - Manager only
+     * @param userAddress Address of the user to update
+     * @param amount Staking amount, must match one of the staking types from T1-T6
+     * @notice This method updates staking category without requiring actual token transfers
+     */
+    function manualUpdateStakingCategory(address userAddress, uint256 amount) external onlyManager {
+        require(userAddress != address(0), "StakingManager: user address cannot be zero");
+        require(nodeManager.inviters(userAddress) != address(0), "inviter not set");
+        require(amount >= userCurrentLiquidityAmount[userAddress], "amount should more than previous staking amount");
+
+        userCurrentLiquidityAmount[userAddress] = amount;
+        (uint8 stakingType, uint256 endStakingTime) = liquidityProviderTypeAndAmount(amount);
+        stakingTypeUsers[stakingType].push(userAddress);
+
+        uint256 round = lpStakingRound[userAddress];
+        StakingInfo storage lpInfo = liquidities[userAddress][round];
+        lpInfo.liquidityProvider = userAddress;
+        lpInfo.stakingType = stakingType;
+        lpInfo.stakingAmount = amount;
+        lpInfo.rewardUAmount = 0;
+        lpInfo.rewardAmount = 0;
+        lpInfo.claimedAmount = 0;
+
+        emit LiquidityProviderDeposits(round, USDT, stakingType, userAddress, amount, block.timestamp, endStakingTime);
+
+        lpStakingRound[userAddress] += 1;
+        teamOutOfReward[userAddress] = false;
+    }
+
+    /**
      * @dev Get liquidity providers list by type
      * @param stakingType Staking type (0-T1, 1-T2, ... 5-T6)
      * @return Address array of all liquidity providers of this type

@@ -96,6 +96,8 @@ contract MockEventFundingManager is IEventFundingManager {
         return true;
     }
 
+    function withdrawToken(address tokenAddress, address recipient, uint256 amount) external override {}
+
     function bettingEvent(address eventPod, address user, uint256 amount) external override {}
 }
 

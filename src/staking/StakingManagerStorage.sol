@@ -25,6 +25,8 @@ abstract contract StakingManagerStorage is IStakingManager {
     uint256 public constant t6Staking = 14000 * 10 ** 18;
     uint256 public constant t6StakingTimeInternal = 604800;
 
+    address public constant DEAD_ADDRESS = 0x000000000000000000000000000000000000dEaD;
+
     address public constant V2_ROUTER = 0x10ED43C718714eb63d5aA57B78B54704E256024E;
 
     IDaoRewardManager public daoRewardManager;

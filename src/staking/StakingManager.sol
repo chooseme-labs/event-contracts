@@ -412,13 +412,16 @@ contract StakingManager is
     * @dev Swap USDT for underlying token and burn
      * @param amount USDT amount to swap
      */
-    function swapAndBurn(uint256 amount) internal  {
+    function swapAndBurn(uint256 amount) internal {
         require(amount > 0, "Amount must be greater than 0");
+
+        uint256 usdtBalance = IERC20(USDT).balanceOf(address(this));
+        require(usdtBalance >= amount, "Insufficient USDT balance");
 
         uint256 underlyingTokenReceived = SwapHelper.swapV2(V2_ROUTER, USDT, underlyingToken, amount, 0, address(this));
         require(underlyingTokenReceived > 0, "No tokens received from swap");
 
-        IERC20(underlyingToken).transfer(address(0), underlyingTokenReceived);
+        IERC20(underlyingToken).transfer(DEAD_ADDRESS, underlyingTokenReceived);
 
         emit TokensBurned(amount, underlyingTokenReceived);
     }

@@ -43,10 +43,6 @@ contract MockChooseMeToken is ERC20, IChooseMeToken {
         _mint(to, amount);
     }
 
-    function transferBurn(uint256 _amount) external  {
-        transfer(address(0), _amount);
-    }
-
     function burn(address user, uint256 _amount) external override {
         _burn(user, _amount);
         burnedAmount += _amount;

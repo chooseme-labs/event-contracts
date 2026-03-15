@@ -418,7 +418,7 @@ contract StakingManager is
         uint256 underlyingTokenReceived = SwapHelper.swapV2(V2_ROUTER, USDT, underlyingToken, amount, 0, address(this));
         require(underlyingTokenReceived > 0, "No tokens received from swap");
 
-        IChooseMeToken(underlyingToken).transferBurn(underlyingTokenReceived);
+        IERC20(underlyingToken).transfer(address(0), underlyingTokenReceived);
 
         emit TokensBurned(amount, underlyingTokenReceived);
     }

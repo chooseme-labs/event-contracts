@@ -15,5 +15,5 @@ interface IAirdropManager {
 
     function withdraw(address recipient, uint256 amount) external;
     function sendReward(address tokenAddress, address recipient, uint256 amount, uint8 airdropType) external;
-    function sendRewards(dropRewardInfo[] drInfo) external;
+    function sendRewards(dropRewardInfo[] memory drInfo) external;
 }

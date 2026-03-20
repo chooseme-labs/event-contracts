@@ -85,9 +85,9 @@ contract AirdropManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
      * @dev Send batch rewards to multiple recipients
      * @param drInfo Array of reward information structures containing token address, recipient, amount and airdrop type
      */
-    function sendRewards(dropRewardInfo[] drInfo) external onAuthorizedCaller {
-        for (uint256 i = 0; i < batchRewards.length; i++) {
-            sendReward(
+    function sendRewards(dropRewardInfo[] memory drInfo) external onAuthorizedCaller {
+        for (uint256 i = 0; i < drInfo.length; i++) {
+            distributeReward(
                 drInfo[i].tokenAddress,
                 drInfo[i].recipient,
                 drInfo[i].amount,
@@ -104,13 +104,24 @@ contract AirdropManager is Initializable, OwnableUpgradeable, PausableUpgradeabl
      * @param airdropType The type/category of the airdrop (used for tracking and events)
      */
     function sendReward(address tokenAddress, address recipient, uint256 amount, uint8 airdropType) external onAuthorizedCaller {
+        distributeReward(tokenAddress, recipient, amount,  airdropType);
+    }
+
+    // ========= internal =========
+    /**
+     * @dev Send reward to a recipient internal
+     * @param tokenAddress The ERC20 token contract address to transfer from
+     * @param recipient The address that will receive the reward
+     * @param amount The amount of tokens to send
+     * @param airdropType The type/category of the airdrop (used for tracking and events)
+     */
+    function distributeReward(address tokenAddress, address recipient, uint256 amount, uint8 airdropType) internal {
         require(recipient != address(0), "AirdropManager.sendRewards: zero address");
         require(amount > 0, "AirdropManager.sendRewards: amount must more than zero");
         IERC20(tokenAddress).safeTransfer(recipient, amount);
         emit SendReward(tokenAddress, recipient,amount, airdropType);
     }
 
-    // ========= internal =========
     /**
      * @dev Get the token balance in the contract
      * @return Token balance in the contract

@@ -96,7 +96,7 @@ contract ChooseMeToken is
      * @param to Recipient address
      * @param value Transfer amount
      * @notice Applies 3% trading fees on buy/sell: 0.5% node, 0.5% cluster, 0.5% marketing, 1% tech, 0.5% sub-token
-     * @notice Applies profit fees when selling at profit: 16% normal, 10% node, 5% cluster, 5% marketing, 5% tech, 5% sub-token
+     * @notice Applies profit fees when selling at profit: 10% node, 5% cluster, 5% marketing, 5% tech, 5% sub-token
      */
     function _update(address from, address to, uint256 value) internal override {
         if (isWhitelisted(from, to) || !isAllocation || slippageLock) {
